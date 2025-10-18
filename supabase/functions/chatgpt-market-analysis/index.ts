@@ -15,9 +15,9 @@ serve(async (req) => {
     const { propertyInfo, marketAnalysis } = await req.json();
     console.log('ChatGPT Market Analysis request:', { propertyInfo, marketAnalysis });
 
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      throw new Error('OPENAI_API_KEY not configured');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!lovableApiKey) {
+      throw new Error('LOVABLE_API_KEY not configured');
     }
 
     // Construire le prompt utilisateur
@@ -90,47 +90,45 @@ Réponds UNIQUEMENT en JSON valide suivant exactement cette structure :
   "fraicheur_donnees": "récente" | "moyenne" | "ancienne"
 }`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-mini-2025-08-07',
+        model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        max_completion_tokens: 1500,
-        response_format: { type: "json_object" }
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI API error:', response.status, errorText);
+      console.error('Lovable AI error:', response.status, errorText);
       
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+          JSON.stringify({ error: 'Rate limit atteint. Veuillez réessayer dans quelques instants.' }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: 'Insufficient credits. Please add funds to your OpenAI account.' }),
+          JSON.stringify({ error: 'Crédits Lovable AI insuffisants. Ajoutez des crédits dans Settings > Workspace > Usage.' }),
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
-      throw new Error(`OpenAI API error: ${response.status} ${errorText}`);
+      throw new Error(`Lovable AI error: ${response.status} ${errorText}`);
     }
 
     const data = await response.json();
     const content = data.choices[0].message.content;
-    console.log('ChatGPT response:', content);
+    console.log('Lovable AI response:', content);
 
     const analysis = JSON.parse(content);
     
@@ -141,7 +139,7 @@ Réponds UNIQUEMENT en JSON valide suivant exactement cette structure :
         !analysis.recommandation || !analysis.confiance || 
         !analysis.sources_comparaison || !analysis.date_donnees_marche || 
         !analysis.fraicheur_donnees) {
-      throw new Error('Invalid response structure from ChatGPT');
+      throw new Error('Invalid response structure from Lovable AI');
     }
 
     return new Response(JSON.stringify(analysis), {

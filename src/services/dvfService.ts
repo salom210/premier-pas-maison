@@ -96,13 +96,42 @@ export async function fetchChatGPTAnalysis(
     });
 
     if (error) {
-      console.error('Error fetching ChatGPT analysis:', error);
+      console.error('Error fetching AI analysis:', error);
+      
+      // Gestion spécifique des erreurs 429 et 402
+      if (error.message?.includes('429') || error.message?.includes('Rate limit')) {
+        throw new Error('RATE_LIMIT');
+      }
+      if (error.message?.includes('402') || error.message?.includes('insuffisants') || error.message?.includes('credits')) {
+        throw new Error('INSUFFICIENT_CREDITS');
+      }
+      
+      return null;
+    }
+
+    // Vérifier si data contient une erreur
+    if (data?.error) {
+      console.error('AI analysis returned error:', data.error);
+      
+      if (data.error.includes('Rate limit') || data.error.includes('429')) {
+        throw new Error('RATE_LIMIT');
+      }
+      if (data.error.includes('Crédits') || data.error.includes('402')) {
+        throw new Error('INSUFFICIENT_CREDITS');
+      }
+      
       return null;
     }
 
     return { ...data, timestamp: new Date().toISOString() };
   } catch (error) {
-    console.error('Exception fetching ChatGPT analysis:', error);
+    console.error('Exception fetching AI analysis:', error);
+    
+    // Re-throw les erreurs spécifiques pour que le composant puisse les gérer
+    if (error instanceof Error && (error.message === 'RATE_LIMIT' || error.message === 'INSUFFICIENT_CREDITS')) {
+      throw error;
+    }
+    
     return null;
   }
 }

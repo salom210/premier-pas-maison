@@ -189,8 +189,21 @@ export function OfferToolModal({
       else if (ecart > 10) marketData.conclusion = 'survalorise';
       else marketData.conclusion = 'correct';
 
-      // 2. Analyse qualitative (ChatGPT) - TOUJOURS appelée
-      const chatgptAnalysis = await fetchChatGPTAnalysis(localOffre.property_info, marketData);
+      // 2. Analyse qualitative (IA) - TOUJOURS appelée
+      let chatgptAnalysis = null;
+      let aiErrorType = null;
+      
+      try {
+        chatgptAnalysis = await fetchChatGPTAnalysis(localOffre.property_info, marketData);
+      } catch (error) {
+        if (error instanceof Error) {
+          if (error.message === 'RATE_LIMIT') {
+            aiErrorType = 'RATE_LIMIT';
+          } else if (error.message === 'INSUFFICIENT_CREDITS') {
+            aiErrorType = 'INSUFFICIENT_CREDITS';
+          }
+        }
+      }
 
       let fiabiliteScore = null;
       if (chatgptAnalysis) {
@@ -210,12 +223,33 @@ export function OfferToolModal({
       const source = marketData.source === 'IA' ? 'IA' : 'DVF';
       const analysisType = chatgptAnalysis ? `${source} + Analyse experte IA` : source;
       
-      toast({
-        title: `Analyse de marché complète (${analysisType})`,
-        description: marketData.nombre_transactions_similaires 
-          ? `${marketData.nombre_transactions_similaires} transactions similaires trouvées.`
-          : 'Estimation basée sur l\'analyse IA.'
-      });
+      // Toast de succès avec message conditionnel selon la disponibilité de l'analyse IA
+      if (aiErrorType === 'RATE_LIMIT') {
+        toast({
+          title: `Analyse de marché (${source})`,
+          description: "L'analyse experte IA est temporairement indisponible (trop de requêtes). Réessayez dans quelques instants.",
+          variant: "default"
+        });
+      } else if (aiErrorType === 'INSUFFICIENT_CREDITS') {
+        toast({
+          title: `Analyse de marché (${source})`,
+          description: "Crédits Lovable AI insuffisants. Ajoutez des crédits dans Settings > Workspace > Usage.",
+          variant: "default"
+        });
+      } else if (chatgptAnalysis) {
+        toast({
+          title: `Analyse de marché complète (${analysisType})`,
+          description: marketData.nombre_transactions_similaires 
+            ? `${marketData.nombre_transactions_similaires} transactions similaires trouvées.`
+            : 'Estimation basée sur l\'analyse IA.'
+        });
+      } else {
+        toast({
+          title: `Analyse de marché (${source})`,
+          description: "L'analyse experte IA n'est pas disponible pour le moment. Les données quantitatives sont affichées.",
+          variant: "default"
+        });
+      }
 
       setActiveTab("marche");
     } catch (error) {
@@ -400,7 +434,7 @@ Cordialement,
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
       <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
         <div className="p-6 border-b shrink-0">
           <DialogHeader>
@@ -835,7 +869,7 @@ Cordialement,
                     </CardHeader>
                     <CardContent>
                       <p className="text-2xl font-bold text-foreground">
-                        {localOffre.market_analysis.prix_moyen_m2_quartier.toLocaleString('fr-FR')} €
+                        {(localOffre.market_analysis.prix_moyen_m2_quartier ?? localOffre.market_analysis.prix_moyen_m2_ville ?? 0).toLocaleString('fr-FR')} €
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">Dans le quartier</p>
                     </CardContent>
@@ -847,7 +881,7 @@ Cordialement,
                     </CardHeader>
                     <CardContent>
                       <p className="text-lg font-semibold text-foreground">
-                        {localOffre.market_analysis.valeur_estimee_basse.toLocaleString('fr-FR')} - {localOffre.market_analysis.valeur_estimee_haute.toLocaleString('fr-FR')} €
+                        {(localOffre.market_analysis.valeur_estimee_basse ?? 0).toLocaleString('fr-FR')} - {(localOffre.market_analysis.valeur_estimee_haute ?? 0).toLocaleString('fr-FR')} €
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">Fourchette estimée</p>
                     </CardContent>
@@ -859,7 +893,7 @@ Cordialement,
                     </CardHeader>
                     <CardContent>
                       <p className="text-2xl font-bold text-foreground">
-                        {localOffre.market_analysis.nombre_transactions_similaires}
+                        {localOffre.market_analysis.nombre_transactions_similaires ?? 0}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">Biens similaires vendus</p>
                     </CardContent>
@@ -891,17 +925,30 @@ Cordialement,
                   </Card>
                 )}
 
-                {/* Jauge de fiabilité */}
-                {localOffre.fiabilite && (
-                  <FiabiliteGauge fiabilite={localOffre.fiabilite} />
-                )}
-
-                {/* Analyse ChatGPT */}
-                {localOffre.chatgpt_analysis && (
-                  <ChatGPTAnalysisCard 
-                    analysis={localOffre.chatgpt_analysis}
-                    prixDemande={localOffre.property_info.prix_demande}
-                  />
+                {/* Analyse experte IA et Fiabilité */}
+                {localOffre.chatgpt_analysis && localOffre.fiabilite ? (
+                  <>
+                    <FiabiliteGauge fiabilite={localOffre.fiabilite} />
+                    <ChatGPTAnalysisCard 
+                      analysis={localOffre.chatgpt_analysis}
+                      prixDemande={localOffre.property_info.prix_demande}
+                    />
+                  </>
+                ) : (
+                  <div className="p-4 rounded-lg border border-warning/30 bg-warning/5">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="h-5 w-5 text-warning-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground mb-1">
+                          Analyse experte IA indisponible
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          L'analyse qualitative nécessite Lovable AI. Les données quantitatives du marché sont disponibles ci-dessus. 
+                          Si le problème persiste, vérifiez vos crédits dans Settings → Workspace → Usage.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 {/* Actions */}
