@@ -22,14 +22,19 @@ serve(async (req) => {
     console.log('Fetching market data for:', { codePostal, ville, surface, nombrePieces });
 
     // Appel à l'API DVF officielle (data.gouv.fr)
-    const dvfUrl = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/dvf-france/records?where=code_postal="${codePostal}" AND type_local="Appartement" AND nature_mutation="Vente"&limit=100&order_by=date_mutation DESC`;
-    
+    const whereClause = encodeURIComponent(`code_postal="${codePostal}" AND type_local="Appartement" AND nature_mutation="Vente"`);
+    const dvfUrl = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/demandes-de-valeurs-foncieres/records?where=${whereClause}&limit=100&order_by=date_mutation%20DESC`;
+
+    console.log('DVF URL:', dvfUrl);
     const response = await fetch(dvfUrl, {
       headers: { 'Accept': 'application/json' }
     });
+    console.log('DVF response status:', response.status);
 
     if (!response.ok) {
-      throw new Error(`DVF API error: ${response.status}`);
+      let bodyText = '';
+      try { bodyText = await response.text(); } catch (_) { bodyText = ''; }
+      throw new Error(`DVF API error: ${response.status} ${bodyText?.slice(0, 200)}`);
     }
 
     const data = await response.json();
