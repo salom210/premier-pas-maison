@@ -56,6 +56,13 @@ export function OfferToolModal({
     setLocalOffre(offre);
   }, [offre]);
 
+  // Auto-switch to "Marché" tab after market analysis is loaded
+  useEffect(() => {
+    if (localOffre.market_analysis && activeTab === "bien" && !isLoadingMarket) {
+      setActiveTab("marche");
+    }
+  }, [localOffre.market_analysis, activeTab, isLoadingMarket]);
+
   // Address autocomplete
   const searchAddress = useCallback(async (query: string) => {
     if (query.length < 3) {
@@ -251,8 +258,6 @@ export function OfferToolModal({
           variant: "default"
         });
       }
-
-      setActiveTab("marche");
     } catch (error) {
       toast({
         title: "Erreur",
