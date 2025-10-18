@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { AlertTriangle, TrendingUp, FileText, CheckCircle2, Home, BarChart3, Lightbulb, Loader2 } from "lucide-react";
+import { AlertTriangle, TrendingUp, FileText, CheckCircle2, Home, BarChart3, Lightbulb, Loader2, MapPin } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import type { Offre, OffreScenario, PropertyInfo, MarketAnalysis } from "@/types/project";
 import { fetchMarketData, calculerProbabiliteAcceptation } from "@/services/dvfService";
@@ -40,11 +42,56 @@ export function OfferToolModal({
   const [activeTab, setActiveTab] = useState<string>("bien");
   const [localOffre, setLocalOffre] = useState<Offre>(offre);
   const [isLoadingMarket, setIsLoadingMarket] = useState(false);
+  const [addressSearch, setAddressSearch] = useState("");
+  const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+  const [isLoadingAddress, setIsLoadingAddress] = useState(false);
+  const [openAddressPopover, setOpenAddressPopover] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     setLocalOffre(offre);
   }, [offre]);
+
+  // Address autocomplete
+  const searchAddress = useCallback(async (query: string) => {
+    if (query.length < 3) {
+      setAddressSuggestions([]);
+      return;
+    }
+
+    setIsLoadingAddress(true);
+    try {
+      const response = await fetch(
+        `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5`
+      );
+      const data = await response.json();
+      setAddressSuggestions(data.features || []);
+    } catch (error) {
+      console.error("Error fetching addresses:", error);
+      setAddressSuggestions([]);
+    } finally {
+      setIsLoadingAddress(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (addressSearch) {
+        searchAddress(addressSearch);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [addressSearch, searchAddress]);
+
+  const selectAddress = (feature: any) => {
+    const props = feature.properties;
+    updatePropertyInfo("adresse", props.name);
+    updatePropertyInfo("code_postal", props.postcode);
+    updatePropertyInfo("ville", props.city);
+    setAddressSearch(props.label);
+    setOpenAddressPopover(false);
+  };
 
   // Property Info handlers
   const updatePropertyInfo = (field: keyof PropertyInfo, value: any) => {
@@ -376,12 +423,62 @@ Cordialement,
               <CardContent className="space-y-4">
                 <div>
                   <Label htmlFor="adresse">Adresse complète</Label>
-                  <Input
-                    id="adresse"
-                    value={localOffre.property_info?.adresse || ""}
-                    onChange={(e) => updatePropertyInfo("adresse", e.target.value)}
-                    placeholder="12 rue de la République"
-                  />
+                  <Popover open={openAddressPopover} onOpenChange={setOpenAddressPopover}>
+                    <PopoverTrigger asChild>
+                      <div className="relative">
+                        <Input
+                          id="adresse"
+                          value={addressSearch || localOffre.property_info?.adresse || ""}
+                          onChange={(e) => {
+                            setAddressSearch(e.target.value);
+                            setOpenAddressPopover(true);
+                          }}
+                          placeholder="Commencez à taper une adresse..."
+                          className="pr-10"
+                        />
+                        {isLoadingAddress ? (
+                          <Loader2 className="h-4 w-4 animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        ) : (
+                          <MapPin className="h-4 w-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        )}
+                      </div>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[400px] p-0" align="start">
+                      <Command>
+                        <CommandList>
+                          {addressSuggestions.length === 0 && !isLoadingAddress && addressSearch.length >= 3 && (
+                            <CommandEmpty>Aucune adresse trouvée</CommandEmpty>
+                          )}
+                          {addressSuggestions.length === 0 && addressSearch.length < 3 && (
+                            <CommandEmpty>Tapez au moins 3 caractères</CommandEmpty>
+                          )}
+                          {addressSuggestions.length > 0 && (
+                            <CommandGroup>
+                              {addressSuggestions.map((suggestion) => (
+                                <CommandItem
+                                  key={suggestion.properties.id}
+                                  value={suggestion.properties.label}
+                                  onSelect={() => selectAddress(suggestion)}
+                                  className="cursor-pointer"
+                                >
+                                  <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{suggestion.properties.name}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {suggestion.properties.postcode} {suggestion.properties.city}
+                                    </span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          )}
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    L'adresse remplira automatiquement le code postal et la ville
+                  </p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
