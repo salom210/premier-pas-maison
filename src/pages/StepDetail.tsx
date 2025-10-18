@@ -43,7 +43,15 @@ const StepDetail = () => {
               ...s,
               checklist: s.checklist.map((item) =>
                 item.id === itemId
-                  ? { ...item, status: item.status === "done" ? "todo" : "done" }
+                  ? {
+                      ...item,
+                      status:
+                        item.status === "done"
+                          ? "todo"
+                          : item.status === "in_progress"
+                          ? "done"
+                          : "in_progress",
+                    }
                   : item
               ),
             }
@@ -112,6 +120,8 @@ const StepDetail = () => {
               >
                 {item.status === "done" ? (
                   <CheckCircle2 className="h-5 w-5 text-primary" />
+                ) : item.status === "in_progress" ? (
+                  <Circle className="h-5 w-5 text-warning-foreground fill-warning/30" />
                 ) : (
                   <Circle className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
                 )}
@@ -122,6 +132,8 @@ const StepDetail = () => {
                     className={`text-sm ${
                       item.status === "done"
                         ? "text-muted-foreground line-through"
+                        : item.status === "in_progress"
+                        ? "text-foreground font-medium"
                         : "text-foreground"
                     }`}
                   >

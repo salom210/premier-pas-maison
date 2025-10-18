@@ -3,7 +3,7 @@ import { ProjectData } from "@/types/project";
 export const mockProjectData: ProjectData = {
   user: {
     id: "u_demo",
-    stage: "recherche",
+    stage: "pre_projet",
     copropriete: true,
     budget_max: 350000,
     travaux_prevus: true,
@@ -18,19 +18,45 @@ export const mockProjectData: ProjectData = {
       { id: "user", label: "Vous" },
     ],
     docs_defs: [
-      { key: "pv_ag_derniere", label: "PV de la dernière AG" },
-      { key: "releve_charges_12m", label: "Relevé de charges (12 mois)" },
-      { key: "etat_sinistres_3ans", label: "Historique sinistres (3 ans)" },
+      { key: "pv_ag_derniere", label: "PV dernière AG" },
+      { key: "releve_charges_12m", label: "Relevé charges 12m" },
+      { key: "etat_sinistres_3ans", label: "Sinistres 3 ans" },
       { key: "devis_toiture", label: "Devis toiture (si soupçon)" },
     ],
   },
   rules: {
     gating: [
       {
-        when_step: "visites",
-        requires: [{ type: "checklist_done", id: "chk_r_02" }],
+        when_step: "recherche",
+        requires: [
+          { type: "checklist_done", id: "chk_pp_03" },
+          { type: "checklist_done", id: "chk_b_01" },
+        ],
         message_if_blocked:
-          "Vous ne pouvez pas passer aux visites tant que le PV de la dernière AG n'a pas été consulté.",
+          "Validez fenêtre de tir et budget réaliste avant la recherche.",
+      },
+      {
+        when_step: "visites",
+        requires: [
+          { type: "checklist_done", id: "chk_r_02" },
+          { type: "no_missing_info_step", step: "recherche" },
+        ],
+        message_if_blocked:
+          "Consultez le PV d'AG et résolvez les manquants avant visites.",
+      },
+      {
+        when_step: "offre",
+        requires: [
+          { type: "checklist_group_criticals_done", step: "visites" },
+          { type: "no_missing_info_step", step: "visites" },
+        ],
+        message_if_blocked:
+          "Sécurisez critiques de visite et infos manquantes avant l'offre.",
+      },
+      {
+        when_step: "compromis",
+        requires: [{ type: "checklist_done", id: "chk_o_02" }],
+        message_if_blocked: "Précisez vos clauses sensibles avant compromis.",
       },
     ],
     non_retours: [
@@ -38,8 +64,13 @@ export const mockProjectData: ProjectData = {
         step: "offre",
         trigger: "offre_acceptee",
         label: "Offre acceptée",
-        explanation:
-          "Au-delà de ce point, les possibilités de retrait sont limitées aux clauses prévues.",
+        explanation: "Retrait limité aux clauses.",
+      },
+      {
+        step: "compromis",
+        trigger: "compromis_signe",
+        label: "Compromis signé",
+        explanation: "Engagement juridique fort.",
       },
     ],
     missing_info_rules: [
@@ -56,19 +87,77 @@ export const mockProjectData: ProjectData = {
   },
   steps: [
     {
-      id: "recherche",
-      label: "Recherche & filtrage",
+      id: "pre_projet",
+      label: "Pré-projet",
       status: "in_progress",
       checklist: [
         {
-          id: "chk_r_01",
-          label: "Définir vos critères must / nice / no-go",
-          critical: true,
+          id: "chk_pp_01",
+          label: "Parcourir les étapes",
+          critical: false,
           status: "done",
         },
         {
+          id: "chk_pp_02",
+          label: "Identifier risques",
+          critical: false,
+          status: "in_progress",
+        },
+        {
+          id: "chk_pp_03",
+          label: "Valider fenêtre de tir",
+          critical: true,
+          status: "todo",
+        },
+      ],
+      missing_info: [],
+      decisions: [],
+      blockers: [],
+      next_allowed: false,
+    },
+    {
+      id: "budget",
+      label: "Budget & financement",
+      status: "todo",
+      checklist: [
+        {
+          id: "chk_b_01",
+          label: "Capacité d'achat réaliste",
+          critical: true,
+          status: "todo",
+        },
+        {
+          id: "chk_b_02",
+          label: "Coûts annexes",
+          critical: true,
+          status: "todo",
+        },
+        {
+          id: "chk_b_03",
+          label: "Scénarios co-investisseur / travaux",
+          critical: false,
+          status: "todo",
+        },
+      ],
+      missing_info: [],
+      decisions: [],
+      blockers: [],
+      next_allowed: false,
+    },
+    {
+      id: "recherche",
+      label: "Recherche & filtrage",
+      status: "todo",
+      checklist: [
+        {
+          id: "chk_r_01",
+          label: "Critères must/nice/no-go",
+          critical: true,
+          status: "todo",
+        },
+        {
           id: "chk_r_02",
-          label: "Consulter le PV de la dernière AG",
+          label: "Consulter PV AG",
           critical: true,
           status: "todo",
           related_docs: ["pv_ag_derniere"],
@@ -77,29 +166,153 @@ export const mockProjectData: ProjectData = {
       missing_info: [
         {
           id: "miss_r_01",
-          label: "PV de la dernière AG",
+          label: "PV dernière AG",
           doc_key: "pv_ag_derniere",
           ask_to: "syndic",
-          reason: "Identifier les travaux votés ou évoqués",
+          reason: "Décisions/impayés",
           status: "absent",
         },
       ],
       decisions: [],
-      blockers: [
-        {
-          id: "blk_r_ag",
-          label: "PV AG non consulté",
-          severity: "high",
-          explanation: "Le PV doit être lu avant de passer aux visites.",
-        },
-      ],
+      blockers: [],
       next_allowed: false,
     },
     {
       id: "visites",
       label: "Visites & due diligence",
       status: "todo",
-      checklist: [],
+      checklist: [
+        {
+          id: "chk_v_01",
+          label: "Contrôler humidité",
+          critical: true,
+          status: "todo",
+        },
+        {
+          id: "chk_v_02",
+          label: "Indices toiture",
+          critical: true,
+          status: "todo",
+          related_docs: ["devis_toiture"],
+        },
+      ],
+      missing_info: [],
+      decisions: [],
+      blockers: [],
+      next_allowed: false,
+    },
+    {
+      id: "offre",
+      label: "Offre & négociation",
+      status: "todo",
+      checklist: [
+        {
+          id: "chk_o_01",
+          label: "Évaluer valeur cible",
+          critical: true,
+          status: "todo",
+        },
+        {
+          id: "chk_o_02",
+          label: "Préparer clauses",
+          critical: true,
+          status: "todo",
+        },
+      ],
+      missing_info: [],
+      decisions: [],
+      blockers: [],
+      next_allowed: false,
+    },
+    {
+      id: "compromis",
+      label: "Promesse / Compromis",
+      status: "todo",
+      checklist: [
+        {
+          id: "chk_c_01",
+          label: "Relire clauses sensibles",
+          critical: true,
+          status: "todo",
+        },
+      ],
+      missing_info: [],
+      decisions: [],
+      blockers: [],
+      next_allowed: false,
+    },
+    {
+      id: "copro",
+      label: "Copro / structure",
+      status: "todo",
+      checklist: [
+        {
+          id: "chk_cp_01",
+          label: "Santé financière copro",
+          critical: true,
+          status: "todo",
+        },
+      ],
+      missing_info: [],
+      decisions: [],
+      blockers: [],
+      next_allowed: false,
+    },
+    {
+      id: "notaire_banque",
+      label: "Notaire / Banque / Agence",
+      status: "todo",
+      checklist: [
+        {
+          id: "chk_nb_01",
+          label: "Pièces financement",
+          critical: true,
+          status: "todo",
+        },
+      ],
+      missing_info: [],
+      decisions: [],
+      blockers: [],
+      next_allowed: false,
+    },
+    {
+      id: "travaux",
+      label: "Travaux & arbitrages",
+      status: "todo",
+      checklist: [
+        {
+          id: "chk_t_01",
+          label: "Faisabilité technique",
+          critical: true,
+          status: "todo",
+        },
+      ],
+      missing_info: [
+        {
+          id: "miss_t_01",
+          label: "Devis toiture",
+          doc_key: "devis_toiture",
+          ask_to: "syndic",
+          reason: "Valider risque toiture",
+          status: "absent",
+        },
+      ],
+      decisions: [],
+      blockers: [],
+      next_allowed: false,
+    },
+    {
+      id: "post_achat",
+      label: "Post-achat",
+      status: "todo",
+      checklist: [
+        {
+          id: "chk_pa_01",
+          label: "Planifier emménagement",
+          critical: false,
+          status: "todo",
+        },
+      ],
       missing_info: [],
       decisions: [],
       blockers: [],
@@ -107,7 +320,7 @@ export const mockProjectData: ProjectData = {
     },
   ],
   ui: {
-    last_open_step_id: "recherche",
+    last_open_step_id: "pre_projet",
     show_only_blockers: true,
   },
 };

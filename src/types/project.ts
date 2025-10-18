@@ -24,7 +24,7 @@ export interface Catalogs {
 
 export interface GatingRule {
   when_step: string;
-  requires: Array<{ type: string; id: string }>;
+  requires: Array<{ type: string; id?: string; step?: string }>;
   message_if_blocked: string;
 }
 
@@ -51,7 +51,7 @@ export interface ChecklistItem {
   id: string;
   label: string;
   critical: boolean;
-  status: "done" | "todo";
+  status: "done" | "in_progress" | "todo";
   related_docs?: string[];
 }
 
