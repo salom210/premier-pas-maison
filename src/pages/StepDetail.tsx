@@ -86,12 +86,7 @@ const StepDetail = () => {
     }));
   };
 
-  // Vérifier si on peut utiliser l'outil d'offre (toutes les étapes critiques précédentes sont OK)
-  const visitsStep = projectData.steps.find((s) => s.id === "visites");
-  const canUseOfferTool = visitsStep 
-    ? visitsStep.checklist.filter((item) => item.critical).every((item) => item.status === "done") &&
-      visitsStep.missing_info.every((m) => m.status === "present")
-    : false;
+  const canUseOfferTool = true;
 
   return (
     <div className="max-w-4xl">
