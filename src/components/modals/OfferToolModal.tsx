@@ -89,7 +89,7 @@ export function OfferToolModal({
     updatePropertyInfo("adresse", props.name);
     updatePropertyInfo("code_postal", props.postcode);
     updatePropertyInfo("ville", props.city);
-    setAddressSearch(props.label);
+    setAddressSearch(props.name);
     setOpenAddressPopover(false);
   };
 
@@ -422,28 +422,40 @@ Cordialement,
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="adresse">Adresse complète</Label>
-                  <Popover open={openAddressPopover} onOpenChange={setOpenAddressPopover}>
-                    <PopoverTrigger asChild>
-                      <div className="relative">
-                        <Input
-                          id="adresse"
-                          value={addressSearch || localOffre.property_info?.adresse || ""}
-                          onChange={(e) => {
-                            setAddressSearch(e.target.value);
+                  <Label htmlFor="adresse">Adresse</Label>
+                  <Popover open={openAddressPopover && addressSuggestions.length > 0} onOpenChange={setOpenAddressPopover}>
+                    <div className="relative">
+                      <Input
+                        id="adresse"
+                        value={addressSearch || localOffre.property_info?.adresse || ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setAddressSearch(value);
+                          if (value.length >= 3) {
                             setOpenAddressPopover(true);
-                          }}
-                          placeholder="Commencez à taper une adresse..."
-                          className="pr-10"
-                        />
-                        {isLoadingAddress ? (
-                          <Loader2 className="h-4 w-4 animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                        ) : (
-                          <MapPin className="h-4 w-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                        )}
-                      </div>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[400px] p-0" align="start">
+                          } else {
+                            setOpenAddressPopover(false);
+                          }
+                        }}
+                        onFocus={() => {
+                          if (addressSearch.length >= 3 && addressSuggestions.length > 0) {
+                            setOpenAddressPopover(true);
+                          }
+                        }}
+                        placeholder="Ex: 26 Avenue Gabriel Péri"
+                        className="pr-10"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
+                      />
+                      {isLoadingAddress ? (
+                        <Loader2 className="h-4 w-4 animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      ) : (
+                        <MapPin className="h-4 w-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      )}
+                    </div>
+                    <PopoverContent className="w-[400px] p-0" align="start" sideOffset={5}>
                       <Command>
                         <CommandList>
                           {addressSuggestions.length === 0 && !isLoadingAddress && addressSearch.length >= 3 && (
@@ -477,7 +489,7 @@ Cordialement,
                     </PopoverContent>
                   </Popover>
                   <p className="text-xs text-muted-foreground mt-1">
-                    L'adresse remplira automatiquement le code postal et la ville
+                    Commencez à taper pour voir les suggestions
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -488,7 +500,11 @@ Cordialement,
                       value={localOffre.property_info?.code_postal || ""}
                       onChange={(e) => updatePropertyInfo("code_postal", e.target.value)}
                       placeholder="75001"
+                      className={localOffre.property_info?.code_postal ? "bg-muted/50" : ""}
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Rempli automatiquement
+                    </p>
                   </div>
                   <div>
                     <Label htmlFor="ville">Ville</Label>
@@ -497,7 +513,11 @@ Cordialement,
                       value={localOffre.property_info?.ville || ""}
                       onChange={(e) => updatePropertyInfo("ville", e.target.value)}
                       placeholder="Paris"
+                      className={localOffre.property_info?.ville ? "bg-muted/50" : ""}
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Remplie automatiquement
+                    </p>
                   </div>
                 </div>
               </CardContent>
