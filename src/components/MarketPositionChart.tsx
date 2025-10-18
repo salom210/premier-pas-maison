@@ -48,7 +48,7 @@ export function MarketPositionChart({
           {/* Barre de marché */}
           <div className="relative h-32 px-8">
             {/* Barre horizontale avec zones colorées */}
-            <div className="absolute w-full h-10 top-14 rounded-full overflow-hidden flex shadow-lg">
+            <div className="absolute w-full h-6 top-14 rounded-full overflow-hidden flex shadow-lg">
               {/* Zone basse (bleu) */}
               <div 
                 className="bg-blue-500 transition-all duration-300"
@@ -75,20 +75,46 @@ export function MarketPositionChart({
                 <div className="bg-primary text-primary-foreground px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap mb-2 shadow-md">
                   {(prixDemande / 1000).toFixed(0)}k€
                 </div>
-                <div className="w-1 h-12 bg-primary rounded-full shadow-lg" />
+                <div className="w-1 h-10 bg-primary rounded-full shadow-lg" />
                 <div className="w-3 h-3 bg-primary rounded-full shadow-lg" />
               </div>
             </div>
             
-            {/* Marqueur valeur médiane (discret) */}
+            {/* Marqueur valeur basse */}
+            <div 
+              className="absolute bottom-2 -translate-x-1/2 transition-all duration-300"
+              style={{ left: '0%' }}
+            >
+              <div className="flex flex-col items-center">
+                <div className="w-0.5 h-4 bg-muted-foreground/50 rounded-full" />
+                <div className="text-xs text-muted-foreground mt-1 whitespace-nowrap font-medium">
+                  Min
+                </div>
+              </div>
+            </div>
+            
+            {/* Marqueur valeur médiane */}
             <div 
               className="absolute bottom-2 -translate-x-1/2 transition-all duration-300"
               style={{ left: `${positionMediane}%` }}
             >
               <div className="flex flex-col items-center">
-                <div className="w-0.5 h-3 bg-muted-foreground/40 rounded-full" />
-                <div className="text-[10px] text-muted-foreground mt-1 whitespace-nowrap">
+                <div className="w-0.5 h-4 bg-muted-foreground/50 rounded-full" />
+                <div className="text-xs text-muted-foreground mt-1 whitespace-nowrap font-medium">
                   Médiane
+                </div>
+              </div>
+            </div>
+            
+            {/* Marqueur valeur haute */}
+            <div 
+              className="absolute bottom-2 -translate-x-1/2 transition-all duration-300"
+              style={{ left: '100%' }}
+            >
+              <div className="flex flex-col items-center">
+                <div className="w-0.5 h-4 bg-muted-foreground/50 rounded-full" />
+                <div className="text-xs text-muted-foreground mt-1 whitespace-nowrap font-medium">
+                  Max
                 </div>
               </div>
             </div>
