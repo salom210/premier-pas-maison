@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "Timeline", url: "/", icon: Home },
+  { title: "Parcours", url: "/", icon: Home },
   { title: "Journal", url: "/journal", icon: BookOpen },
   { title: "Paramètres", url: "/settings", icon: Settings },
 ];
