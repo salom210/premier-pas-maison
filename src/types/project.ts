@@ -102,6 +102,7 @@ export interface PropertyInfo {
   nombre_pieces: number;
   nombre_chambres: number;
   etage?: number;
+  dernier_etage?: boolean;
   ascenseur: boolean;
   balcon_terrasse: boolean;
   surface_exterieure?: number;

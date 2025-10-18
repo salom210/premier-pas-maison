@@ -573,15 +573,27 @@ Cordialement,
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="etage">Étage (optionnel)</Label>
-                    <Input
-                      id="etage"
-                      type="number"
-                      value={localOffre.property_info?.etage || ""}
-                      onChange={(e) => updatePropertyInfo("etage", parseInt(e.target.value) || undefined)}
-                      placeholder="3"
-                    />
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="etage">Étage (optionnel)</Label>
+                      <Input
+                        id="etage"
+                        type="number"
+                        value={localOffre.property_info?.etage || ""}
+                        onChange={(e) => updatePropertyInfo("etage", parseInt(e.target.value) || undefined)}
+                        placeholder="3"
+                      />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="dernier_etage"
+                        checked={localOffre.property_info?.dernier_etage || false}
+                        onCheckedChange={(checked) => updatePropertyInfo("dernier_etage", checked)}
+                      />
+                      <Label htmlFor="dernier_etage" className="cursor-pointer">
+                        Dernier étage
+                      </Label>
+                    </div>
                   </div>
                   <div>
                     <Label htmlFor="surface_ext">Surface extérieure (m²)</Label>
