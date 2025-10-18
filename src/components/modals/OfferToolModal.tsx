@@ -316,31 +316,34 @@ Cordialement,
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Outil d'aide à l'offre</DialogTitle>
-          <DialogDescription>
-            De l'analyse du bien à la génération de scénarios optimisés
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
+        <div className="p-6 border-b shrink-0">
+          <DialogHeader>
+            <DialogTitle>Outil d'aide à l'offre</DialogTitle>
+            <DialogDescription>
+              De l'analyse du bien à la génération de scénarios optimisés
+            </DialogDescription>
+          </DialogHeader>
 
-        {!canProceed && (
-          <div className="p-4 rounded-lg border border-warning/30 bg-warning/5 mb-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-warning-foreground mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-foreground mb-1">
-                  Pré-requis non satisfaits
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Complétez tous les éléments critiques des étapes précédentes avant de préparer votre offre.
-                </p>
+          {!canProceed && (
+            <div className="p-4 rounded-lg border border-warning/30 bg-warning/5 mt-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-warning-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-foreground mb-1">
+                    Pré-requis non satisfaits
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Complétez tous les éléments critiques des étapes précédentes avant de préparer votre offre.
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <div className="flex-1 overflow-y-auto p-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="bien">
               <Home className="h-4 w-4 mr-2" />
@@ -973,14 +976,17 @@ Cordialement,
             </Card>
           </TabsContent>
         </Tabs>
+        </div>
 
-        <div className="flex justify-between pt-4 border-t border-border">
-          <Button variant="outline" onClick={onClose}>
-            Annuler
-          </Button>
-          <Button onClick={handleSave}>
-            Sauvegarder
-          </Button>
+        <div className="p-6 border-t border-border shrink-0">
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={onClose}>
+              Annuler
+            </Button>
+            <Button onClick={handleSave}>
+              Sauvegarder
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
