@@ -18,12 +18,27 @@ export function MarketPositionChart({
   const positionMediane = ((valeurMediane - valeurBasse) / plageTotal) * 100;
   const positionPrixDemande = ((prixDemande - valeurBasse) / plageTotal) * 100;
   
-  // Calcul des zones (médiane ±10%)
-  const zoneBasse = valeurMediane * 0.9; // -10% de la médiane
-  const zoneHaute = valeurMediane * 1.1; // +10% de la médiane
+  // Calcul des zones basées sur la plage totale (±5% autour de la médiane)
+  const margeZoneVerte = plageTotal * 0.05; // 5% de la plage totale
+  const debutZoneVerte = valeurMediane - margeZoneVerte;
+  const finZoneVerte = valeurMediane + margeZoneVerte;
   
-  const positionZoneBasse = ((zoneBasse - valeurBasse) / plageTotal) * 100;
-  const positionZoneHaute = ((zoneHaute - valeurBasse) / plageTotal) * 100;
+  // Calcul des largeurs brutes en pourcentage
+  let largeurZoneBleue = ((debutZoneVerte - valeurBasse) / plageTotal) * 100;
+  let largeurZoneVerte = ((finZoneVerte - debutZoneVerte) / plageTotal) * 100;
+  let largeurZoneRouge = ((valeurHaute - finZoneVerte) / plageTotal) * 100;
+  
+  // Garantir une largeur minimale de 5% pour chaque zone
+  const minWidth = 5;
+  largeurZoneBleue = Math.max(largeurZoneBleue, minWidth);
+  largeurZoneVerte = Math.max(largeurZoneVerte, minWidth);
+  largeurZoneRouge = Math.max(largeurZoneRouge, minWidth);
+  
+  // Normaliser pour que la somme fasse 100%
+  const somme = largeurZoneBleue + largeurZoneVerte + largeurZoneRouge;
+  largeurZoneBleue = (largeurZoneBleue / somme) * 100;
+  largeurZoneVerte = (largeurZoneVerte / somme) * 100;
+  largeurZoneRouge = (largeurZoneRouge / somme) * 100;
 
   return (
     <div className="w-full space-y-6">
@@ -37,17 +52,17 @@ export function MarketPositionChart({
               {/* Zone basse (bleu) */}
               <div 
                 className="bg-blue-500 transition-all duration-300"
-                style={{ width: `${positionZoneBasse}%` }}
+                style={{ width: `${largeurZoneBleue}%` }}
               />
               {/* Zone raisonnable (vert) */}
               <div 
                 className="bg-green-500 transition-all duration-300"
-                style={{ width: `${positionZoneHaute - positionZoneBasse}%` }}
+                style={{ width: `${largeurZoneVerte}%` }}
               />
               {/* Zone survalorisée (rouge) */}
               <div 
                 className="bg-red-500 transition-all duration-300"
-                style={{ width: `${100 - positionZoneHaute}%` }}
+                style={{ width: `${largeurZoneRouge}%` }}
               />
             </div>
             
