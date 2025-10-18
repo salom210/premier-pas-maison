@@ -69,7 +69,7 @@ export function MarketPositionChart({
             {/* Curseur prix demandé */}
             <div 
               className="absolute top-0 -translate-x-1/2 z-10 transition-all duration-300"
-              style={{ left: `calc(2rem + ${positionPrixDemande}% * (100% - 4rem) / 100)` }}
+              style={{ left: `calc(2rem + (100% - 4rem) * ${positionPrixDemande / 100})` }}
             >
               <div className="flex flex-col items-center">
                 <div className="bg-primary text-primary-foreground px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap mb-2 shadow-md">
@@ -98,7 +98,7 @@ export function MarketPositionChart({
             {/* Marqueur valeur médiane */}
             <div 
               className="absolute bottom-2 -translate-x-1/2 transition-all duration-300"
-              style={{ left: `calc(2rem + ${positionMediane}% * (100% - 4rem) / 100)` }}
+              style={{ left: `calc(2rem + (100% - 4rem) * ${positionMediane / 100})` }}
             >
               <div className="flex flex-col items-center">
                 <div className="w-0.5 h-4 bg-muted-foreground/50 rounded-full" />
