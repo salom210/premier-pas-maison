@@ -59,9 +59,10 @@ export function OfferToolModal({
   // Auto-switch to "Marché" tab after market analysis is loaded
   useEffect(() => {
     if (localOffre.market_analysis && activeTab === "bien" && !isLoadingMarket) {
+      console.log('🔄 Basculement automatique vers onglet Marché');
       setActiveTab("marche");
     }
-  }, [localOffre.market_analysis, activeTab, isLoadingMarket]);
+  }, [localOffre.market_analysis?.derniere_maj, activeTab, isLoadingMarket]);
 
   // Address autocomplete
   const searchAddress = useCallback(async (query: string) => {
@@ -231,12 +232,12 @@ export function OfferToolModal({
         fiabiliteScore = calculateFiabilite(chatgptAnalysis, marketData, localOffre.property_info);
       }
 
-      setLocalOffre({
-        ...localOffre,
+      setLocalOffre(prev => ({
+        ...prev,
         market_analysis: marketData,
         chatgpt_analysis: chatgptAnalysis,
         fiabilite: fiabiliteScore
-      });
+      }));
 
       // Générer automatiquement les scénarios
       generateScenarios(marketData, localOffre.property_info);
