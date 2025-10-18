@@ -46,9 +46,9 @@ export function MarketPositionChart({
       <div className="flex justify-center">
         <div className="w-full max-w-2xl space-y-4">
           {/* Barre de marché */}
-          <div className="relative h-32 px-8">
+          <div className="relative h-32">
             {/* Barre horizontale avec zones colorées */}
-            <div className="absolute w-full h-6 top-14 rounded-full overflow-hidden flex shadow-lg">
+            <div className="absolute left-8 right-8 h-6 top-14 rounded-full overflow-hidden flex shadow-lg">
               {/* Zone basse (bleu) */}
               <div 
                 className="bg-blue-500 transition-all duration-300"
@@ -69,7 +69,7 @@ export function MarketPositionChart({
             {/* Curseur prix demandé */}
             <div 
               className="absolute top-0 -translate-x-1/2 z-10 transition-all duration-300"
-              style={{ left: `${positionPrixDemande}%` }}
+              style={{ left: `calc(2rem + ${positionPrixDemande}% * (100% - 4rem) / 100)` }}
             >
               <div className="flex flex-col items-center">
                 <div className="bg-primary text-primary-foreground px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap mb-2 shadow-md">
@@ -82,13 +82,15 @@ export function MarketPositionChart({
             
             {/* Marqueur valeur basse */}
             <div 
-              className="absolute bottom-2 -translate-x-1/2 transition-all duration-300"
-              style={{ left: '0%' }}
+              className="absolute bottom-2 left-8 -translate-x-1/2 transition-all duration-300"
             >
               <div className="flex flex-col items-center">
                 <div className="w-0.5 h-4 bg-muted-foreground/50 rounded-full" />
                 <div className="text-xs text-muted-foreground mt-1 whitespace-nowrap font-medium">
                   Min
+                </div>
+                <div className="text-xs text-foreground font-semibold mt-0.5">
+                  {(valeurBasse / 1000).toFixed(0)}k€
                 </div>
               </div>
             </div>
@@ -96,34 +98,33 @@ export function MarketPositionChart({
             {/* Marqueur valeur médiane */}
             <div 
               className="absolute bottom-2 -translate-x-1/2 transition-all duration-300"
-              style={{ left: `${positionMediane}%` }}
+              style={{ left: `calc(2rem + ${positionMediane}% * (100% - 4rem) / 100)` }}
             >
               <div className="flex flex-col items-center">
                 <div className="w-0.5 h-4 bg-muted-foreground/50 rounded-full" />
                 <div className="text-xs text-muted-foreground mt-1 whitespace-nowrap font-medium">
                   Médiane
                 </div>
+                <div className="text-xs text-foreground font-semibold mt-0.5">
+                  {(valeurMediane / 1000).toFixed(0)}k€
+                </div>
               </div>
             </div>
             
             {/* Marqueur valeur haute */}
             <div 
-              className="absolute bottom-2 -translate-x-1/2 transition-all duration-300"
-              style={{ left: '100%' }}
+              className="absolute bottom-2 right-8 -translate-x-1/2 transition-all duration-300"
             >
               <div className="flex flex-col items-center">
                 <div className="w-0.5 h-4 bg-muted-foreground/50 rounded-full" />
                 <div className="text-xs text-muted-foreground mt-1 whitespace-nowrap font-medium">
                   Max
                 </div>
+                <div className="text-xs text-foreground font-semibold mt-0.5">
+                  {(valeurHaute / 1000).toFixed(0)}k€
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Indicateurs min/max */}
-          <div className="flex justify-between text-xs text-muted-foreground px-8">
-            <span>{(valeurBasse / 1000).toFixed(0)}k€</span>
-            <span>{(valeurHaute / 1000).toFixed(0)}k€</span>
           </div>
         </div>
       </div>
