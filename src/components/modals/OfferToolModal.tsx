@@ -46,6 +46,9 @@ export function OfferToolModal({
   const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
   const [isLoadingAddress, setIsLoadingAddress] = useState(false);
   const [openAddressPopover, setOpenAddressPopover] = useState(false);
+  const [useAI, setUseAI] = useState(false);
+  const [testResults, setTestResults] = useState<any[]>([]);
+  const [isRunningTests, setIsRunningTests] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -126,7 +129,7 @@ export function OfferToolModal({
   };
 
   // Fetch market data
-  const handleFetchMarketData = async () => {
+  const handleFetchMarketData = async (forceAI = false) => {
     if (!localOffre.property_info) {
       toast({
         title: "Informations manquantes",
@@ -136,7 +139,7 @@ export function OfferToolModal({
       return;
     }
 
-    const { code_postal, ville, surface_habitable, nombre_pieces } = localOffre.property_info;
+    const { code_postal, ville, surface_habitable, nombre_pieces, etage, dernier_etage, annee_construction, etat, charges_trimestrielles, prix_demande } = localOffre.property_info;
     
     if (!code_postal || !ville || !surface_habitable || !nombre_pieces) {
       toast({
@@ -153,7 +156,16 @@ export function OfferToolModal({
         code_postal,
         ville,
         surface_habitable,
-        nombre_pieces
+        nombre_pieces,
+        forceAI || useAI,
+        {
+          etage,
+          dernier_etage,
+          annee_construction,
+          etat,
+          charges_trimestrielles,
+          prix_demande
+        }
       );
 
       if (marketData) {
@@ -176,9 +188,12 @@ export function OfferToolModal({
         // Générer automatiquement les scénarios
         generateScenarios(marketData, localOffre.property_info);
 
+        const source = marketData.source === 'IA' ? 'IA' : 'DVF';
         toast({
-          title: "Analyse de marché récupérée",
-          description: `${marketData.nombre_transactions_similaires} transactions similaires trouvées.`
+          title: `Analyse de marché récupérée (${source})`,
+          description: marketData.nombre_transactions_similaires 
+            ? `${marketData.nombre_transactions_similaires} transactions similaires trouvées.`
+            : 'Estimation basée sur l\'analyse IA.'
         });
 
         setActiveTab("marche");
@@ -192,12 +207,69 @@ export function OfferToolModal({
     } catch (error) {
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue lors de la récupération des données.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors de la récupération des données.",
         variant: "destructive"
       });
     } finally {
       setIsLoadingMarket(false);
     }
+  };
+
+  // Run functional tests
+  const runFunctionalTests = async () => {
+    setIsRunningTests(true);
+    const testCases = [
+      { code_postal: '75001', ville: 'Paris', surface: 50, nombre_pieces: 2, name: 'Paris 75001' },
+      { code_postal: '69002', ville: 'Lyon', surface: 45, nombre_pieces: 2, name: 'Lyon 69002' },
+      { code_postal: '00000', ville: 'InvalidCity', surface: 40, nombre_pieces: 2, name: 'Code postal invalide' }
+    ];
+
+    const results = await Promise.all(
+      testCases.map(async (test) => {
+        try {
+          const marketData = await fetchMarketData(
+            test.code_postal,
+            test.ville,
+            test.surface,
+            test.nombre_pieces,
+            true // Force AI for tests
+          );
+
+          const success = marketData !== null && 
+            marketData.valeur_estimee_basse > 0 &&
+            marketData.valeur_estimee_mediane > 0 &&
+            marketData.valeur_estimee_haute > 0 &&
+            marketData.valeur_estimee_basse <= marketData.valeur_estimee_mediane &&
+            marketData.valeur_estimee_mediane <= marketData.valeur_estimee_haute;
+
+          return {
+            name: test.name,
+            success,
+            data: marketData,
+            message: success 
+              ? `✅ Valeurs cohérentes : ${marketData.valeur_estimee_basse.toLocaleString()} - ${marketData.valeur_estimee_haute.toLocaleString()} €`
+              : '❌ Échec ou valeurs incohérentes'
+          };
+        } catch (error) {
+          return {
+            name: test.name,
+            success: false,
+            data: null,
+            message: `❌ Erreur : ${error instanceof Error ? error.message : 'Unknown error'}`
+          };
+        }
+      })
+    );
+
+    setTestResults(results);
+    setIsRunningTests(false);
+
+    const successCount = results.filter(r => r.success).length;
+    toast({
+      title: "Tests terminés",
+      description: `${successCount}/${results.length} tests réussis`,
+      variant: successCount === results.length ? "default" : "destructive"
+    });
   };
 
   // Generate scenarios based on market data
@@ -742,9 +814,19 @@ Cordialement,
               </CardContent>
             </Card>
 
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="useAI"
+                  checked={useAI}
+                  onCheckedChange={setUseAI}
+                />
+                <Label htmlFor="useAI" className="text-sm cursor-pointer">
+                  Forcer l'estimation IA
+                </Label>
+              </div>
               <Button 
-                onClick={handleFetchMarketData}
+                onClick={() => handleFetchMarketData(false)}
                 disabled={isLoadingMarket || !localOffre.property_info}
                 size="lg"
               >
@@ -765,12 +847,59 @@ Cordialement,
 
           {/* TAB 2: MARCHÉ */}
           <TabsContent value="marche" className="space-y-4 mt-4">
+            {/* Tests fonctionnels */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Lightbulb className="h-4 w-4" />
+                  Tests marché (Debug)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Testez l'analyse de marché avec 3 scénarios prédéfinis pour valider le bon fonctionnement.
+                </p>
+                <Button 
+                  onClick={runFunctionalTests}
+                  disabled={isRunningTests}
+                  variant="outline"
+                  size="sm"
+                >
+                  {isRunningTests ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Tests en cours...
+                    </>
+                  ) : (
+                    'Exécuter les tests'
+                  )}
+                </Button>
+                {testResults.length > 0 && (
+                  <div className="space-y-2">
+                    {testResults.map((result, index) => (
+                      <div key={index} className={`p-3 rounded-md border ${result.success ? 'bg-success/5 border-success/20' : 'bg-destructive/5 border-destructive/20'}`}>
+                        <p className="text-sm font-medium">{result.name}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{result.message}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {localOffre.market_analysis && localOffre.property_info && (
               <>
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base flex items-center justify-between">
-                      Position du bien sur le marché
+                      <span className="flex items-center gap-2">
+                        Position du bien sur le marché
+                        {localOffre.market_analysis.source && (
+                          <Badge variant="secondary" className="text-xs">
+                            Source: {localOffre.market_analysis.source}
+                          </Badge>
+                        )}
+                      </span>
                       <Badge variant="outline" className={getConclusionColor(localOffre.market_analysis.conclusion)}>
                         {getConclusionLabel(localOffre.market_analysis.conclusion)}
                       </Badge>

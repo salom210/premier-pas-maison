@@ -5,9 +5,24 @@ export async function fetchMarketData(
   codePostal: string,
   ville: string,
   surface: number,
-  nombrePieces: number
+  nombrePieces: number,
+  useAI = false,
+  additionalInfo?: {
+    etage?: number;
+    dernier_etage?: boolean;
+    annee_construction?: number;
+    etat?: string;
+    charges_trimestrielles?: number;
+    prix_demande?: number;
+  }
 ): Promise<MarketAnalysis | null> {
   try {
+    // Si on force l'IA ou si on veut tester l'IA en priorité
+    if (useAI) {
+      return await fetchAIMarketData(codePostal, ville, surface, nombrePieces, additionalInfo);
+    }
+
+    // Tenter d'abord DVF
     const { data, error } = await supabase.functions.invoke('dvf-market-data', {
       body: {
         codePostal,
@@ -17,14 +32,53 @@ export async function fetchMarketData(
       }
     });
 
+    // Si DVF échoue ou ne retourne rien, fallback sur l'IA
+    if (error || !data || data.nombre_transactions === 0) {
+      console.log('DVF failed or no data, falling back to AI estimation');
+      return await fetchAIMarketData(codePostal, ville, surface, nombrePieces, additionalInfo);
+    }
+
+    return { ...data, source: 'DVF' } as MarketAnalysis;
+  } catch (error) {
+    console.error('Exception fetching market data:', error);
+    // Fallback sur l'IA en cas d'exception
+    return await fetchAIMarketData(codePostal, ville, surface, nombrePieces, additionalInfo);
+  }
+}
+
+async function fetchAIMarketData(
+  codePostal: string,
+  ville: string,
+  surface: number,
+  nombrePieces: number,
+  additionalInfo?: {
+    etage?: number;
+    dernier_etage?: boolean;
+    annee_construction?: number;
+    etat?: string;
+    charges_trimestrielles?: number;
+    prix_demande?: number;
+  }
+): Promise<MarketAnalysis | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke('ai-market-estimate', {
+      body: {
+        codePostal,
+        ville,
+        surface,
+        nombrePieces,
+        ...additionalInfo
+      }
+    });
+
     if (error) {
-      console.error('Error fetching market data:', error);
+      console.error('Error fetching AI market data:', error);
       return null;
     }
 
-    return data as MarketAnalysis;
+    return { ...data, source: 'IA' } as MarketAnalysis;
   } catch (error) {
-    console.error('Exception fetching market data:', error);
+    console.error('Exception fetching AI market data:', error);
     return null;
   }
 }

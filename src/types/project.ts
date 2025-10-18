@@ -128,6 +128,7 @@ export interface MarketAnalysis {
   ecart_prix_demande_vs_marche: number;
   conclusion: 'survalorise' | 'correct' | 'bonne-affaire';
   derniere_maj: string;
+  source?: 'DVF' | 'IA';
 }
 
 export interface OffreScenario {
