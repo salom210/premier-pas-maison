@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -51,15 +51,17 @@ export function OfferToolModal({
   const [isLoadingAddress, setIsLoadingAddress] = useState(false);
   const [openAddressPopover, setOpenAddressPopover] = useState(false);
   const { toast } = useToast();
+  const hasAutoSwitchedToMarche = useRef(false);
 
   useEffect(() => {
     setLocalOffre(offre);
   }, [offre]);
 
-  // Auto-switch to "Marché" tab after market analysis is loaded (only from "bien" tab)
+  // Auto-switch to "Marché" tab after market analysis is loaded (only once, only from "bien" tab)
   useEffect(() => {
-    if (localOffre.market_analysis && activeTab === "bien") {
+    if (localOffre.market_analysis && activeTab === "bien" && !hasAutoSwitchedToMarche.current) {
       console.log('🔄 Basculement automatique vers onglet Marché');
+      hasAutoSwitchedToMarche.current = true;
       setActiveTab("marche");
     }
   }, [localOffre.market_analysis?.derniere_maj, activeTab]);
