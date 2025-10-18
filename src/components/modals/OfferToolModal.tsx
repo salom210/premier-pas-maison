@@ -101,7 +101,20 @@ export function OfferToolModal({
     setLocalOffre(prev => ({
       ...prev,
       property_info: {
-        ...prev.property_info,
+        ...(prev.property_info ?? {
+          adresse: "",
+          code_postal: "",
+          ville: "",
+          surface_habitable: 0,
+          nombre_pieces: 0,
+          nombre_chambres: 0,
+          ascenseur: false,
+          balcon_terrasse: false,
+          parking: false,
+          cave: false,
+          etat: "bon",
+          prix_demande: 0
+        }),
         adresse: props.name,
         code_postal: props.postcode,
         ville: props.city,
@@ -962,7 +975,7 @@ Cordialement,
                  localOffre.market_analysis.transactions_similaires.length > 0 && (
                   <SimilarPropertiesList 
                     properties={localOffre.market_analysis.transactions_similaires}
-                    currentPropertyPrice={localOffre.property_info.prix_demande}
+                    currentPropertyPrice={localOffre.property_info.prix_demande || localOffre.market_analysis.valeur_estimee_mediane}
                   />
                 )}
 

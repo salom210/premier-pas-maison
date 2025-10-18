@@ -14,14 +14,17 @@ export function SimilarPropertiesList({ properties, currentPropertyPrice }: Simi
   }
 
   const getPriceComparison = (prixVente: number) => {
-    const diff = ((prixVente - currentPropertyPrice) / currentPropertyPrice) * 100;
-    if (Math.abs(diff) < 5) {
-      return { icon: Minus, color: "text-muted-foreground", label: "Prix similaire" };
-    } else if (diff > 0) {
-      return { icon: TrendingUp, color: "text-destructive", label: `+${diff.toFixed(1)}%` };
-    } else {
-      return { icon: TrendingDown, color: "text-success", label: `${diff.toFixed(1)}%` };
+    if (!currentPropertyPrice || currentPropertyPrice <= 0) {
+      return { icon: Minus, color: "text-muted-foreground", label: "Prix demandé indisponible" };
     }
+    const diff = ((prixVente - currentPropertyPrice) / currentPropertyPrice) * 100;
+    if (!Number.isFinite(diff) || Math.abs(diff) < 5) {
+      return { icon: Minus, color: "text-muted-foreground", label: "Prix similaire" };
+    }
+    if (diff > 0) {
+      return { icon: TrendingUp, color: "text-destructive", label: `+${diff.toFixed(1)}%` };
+    }
+    return { icon: TrendingDown, color: "text-success", label: `${diff.toFixed(1)}%` };
   };
 
   return (
