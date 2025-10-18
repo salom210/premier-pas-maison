@@ -26,6 +26,7 @@ import { ScenarioCard } from "@/components/ScenarioCard";
 import { PropertyInfoSummary } from "@/components/PropertyInfoSummary";
 import { ChatGPTAnalysisCard } from "@/components/ChatGPTAnalysisCard";
 import { FiabiliteGauge } from "@/components/FiabiliteGauge";
+import { SimilarPropertiesList } from "@/components/SimilarPropertiesList";
 
 interface OfferToolModalProps {
   open: boolean;
@@ -949,6 +950,15 @@ Cordialement,
                       </div>
                     </div>
                   </div>
+                )}
+
+                {/* Liste des biens similaires */}
+                {localOffre.market_analysis.transactions_similaires && 
+                 localOffre.market_analysis.transactions_similaires.length > 0 && (
+                  <SimilarPropertiesList 
+                    properties={localOffre.market_analysis.transactions_similaires}
+                    currentPropertyPrice={localOffre.property_info.prix_demande}
+                  />
                 )}
 
                 {/* Actions */}

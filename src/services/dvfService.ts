@@ -51,9 +51,22 @@ async function fetchAIMarketData(
     }
 
     // Normaliser la réponse de l'IA pour correspondre à MarketAnalysis
+    const prixMoyenM2 = data.prix_moyen_m2 || data.prix_moyen_m2_quartier || Math.round(data.valeur_estimee_mediane / surface);
+    
+    // Map transactions similaires si elles existent
+    const transactionsSimilaires = data.transactions_similaires?.map((t: any, index: number) => ({
+      id: t.id || `transaction_${index}`,
+      adresse: t.adresse,
+      prix_vente: t.prix_vente,
+      surface: t.surface,
+      nombre_pieces: t.nombre_pieces,
+      date_vente: t.date_vente,
+      distance_km: t.distance_km
+    }));
+
     const normalized: MarketAnalysis = {
-      prix_moyen_m2_quartier: data.prix_moyen_m2 || data.prix_moyen_m2_quartier || Math.round(data.valeur_estimee_mediane / surface),
-      prix_moyen_m2_ville: data.prix_moyen_m2_ville || data.prix_moyen_m2 || data.prix_moyen_m2_quartier || Math.round(data.valeur_estimee_mediane / surface),
+      prix_moyen_m2_quartier: prixMoyenM2,
+      prix_moyen_m2_ville: data.prix_moyen_m2_ville || prixMoyenM2,
       prix_min_m2: data.prix_min_m2 || Math.round(data.valeur_estimee_basse / surface),
       prix_max_m2: data.prix_max_m2 || Math.round(data.valeur_estimee_haute / surface),
       valeur_estimee_basse: Math.round(data.valeur_estimee_basse),
@@ -63,7 +76,8 @@ async function fetchAIMarketData(
       ecart_prix_demande_vs_marche: data.ecart_prix_demande_vs_marche || 0,
       conclusion: data.conclusion || 'correct',
       source: 'IA',
-      derniere_maj: new Date().toISOString()
+      derniere_maj: new Date().toISOString(),
+      transactions_similaires: transactionsSimilaires
     };
 
     return normalized;

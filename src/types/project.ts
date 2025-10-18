@@ -116,6 +116,16 @@ export interface PropertyInfo {
   dpe?: string;
 }
 
+export interface SimilarProperty {
+  id: string;
+  adresse?: string;
+  prix_vente: number;
+  surface: number;
+  nombre_pieces: number;
+  date_vente: string;
+  distance_km?: number;
+}
+
 export interface MarketAnalysis {
   prix_moyen_m2_ville: number;
   prix_moyen_m2_quartier: number;
@@ -129,6 +139,7 @@ export interface MarketAnalysis {
   conclusion: 'survalorise' | 'correct' | 'bonne-affaire';
   derniere_maj: string;
   source?: 'DVF' | 'IA';
+  transactions_similaires?: SimilarProperty[];
 }
 
 export interface OffreScenario {

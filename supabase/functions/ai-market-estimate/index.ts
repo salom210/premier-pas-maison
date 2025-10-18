@@ -42,6 +42,14 @@ Fournis une estimation de marché structurée en JSON avec les clés suivantes :
 - valeur_haute : estimation haute de la valeur totale du bien (nombre)
 - nombre_transactions : estimation du nombre de transactions similaires récentes dans la zone (nombre approximatif)
 - justification : brève justification de l'estimation (texte, max 200 caractères)
+- transactions_similaires : tableau de 3 à 5 biens similaires vendus récemment avec :
+  * id : identifiant unique (string)
+  * adresse : adresse approximative ou quartier (string, optionnel)
+  * prix_vente : prix de vente (nombre)
+  * surface : surface en m² (nombre)
+  * nombre_pieces : nombre de pièces (nombre)
+  * date_vente : date de vente au format ISO (string, ex: "2024-09-15")
+  * distance_km : distance approximative du bien analysé en km (nombre, optionnel)
 
 Réponds UNIQUEMENT avec le JSON valide, sans texte avant ou après.`;
 
