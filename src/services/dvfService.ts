@@ -1,52 +1,70 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { MarketAnalysis } from "@/types/project";
 
-export async function fetchMarketData(
+// Fonction pour récupérer les données DVF réelles
+async function fetchRealDVFData(
   codePostal: string,
   ville: string,
   surface: number,
-  nombrePieces: number,
-  useAI = true, // Toujours utiliser l'IA maintenant
-  additionalInfo?: {
-    etage?: number;
-    dernier_etage?: boolean;
-    annee_construction?: number;
-    etat?: string;
-    charges_trimestrielles?: number;
-    prix_demande?: number;
-  }
+  nombrePieces: number
 ): Promise<MarketAnalysis | null> {
-  // Utiliser exclusivement l'IA pour l'estimation de marché
-  return await fetchAIMarketData(codePostal, ville, surface, nombrePieces, additionalInfo);
+  try {
+    const { data, error } = await supabase.functions.invoke('dvf-market-data', {
+      body: { codePostal, ville, surface, nombrePieces }
+    });
+
+    if (error) {
+      console.error('Erreur DVF API:', error);
+      return null;
+    }
+
+    if (!data) {
+      console.log('Aucune donnée DVF retournée');
+      return null;
+    }
+
+    // Normaliser les données DVF au format MarketAnalysis
+    return {
+      prix_moyen_m2_ville: data.prix_moyen_m2_ville,
+      prix_moyen_m2_quartier: data.prix_moyen_m2_quartier,
+      prix_min_m2: data.prix_min_m2,
+      prix_max_m2: data.prix_max_m2,
+      nombre_transactions_similaires: data.nombre_transactions_similaires,
+      valeur_estimee_basse: data.valeur_estimee_basse,
+      valeur_estimee_haute: data.valeur_estimee_haute,
+      valeur_estimee_mediane: data.valeur_estimee_mediane,
+      ecart_prix_demande_vs_marche: data.ecart_prix_demande_vs_marche,
+      conclusion: data.conclusion,
+      derniere_maj: data.derniere_maj,
+      source: 'DVF',
+      transactions_similaires: data.transactions_similaires
+    };
+  } catch (err) {
+    console.error('Erreur lors de l\'appel à l\'API DVF:', err);
+    return null;
+  }
 }
 
+// Fonction pour récupérer les données de marché via l'IA
 async function fetchAIMarketData(
   codePostal: string,
   ville: string,
   surface: number,
   nombrePieces: number,
-  additionalInfo?: {
-    etage?: number;
-    dernier_etage?: boolean;
-    annee_construction?: number;
-    etat?: string;
-    charges_trimestrielles?: number;
-    prix_demande?: number;
-  }
+  additionalInfo?: any
 ): Promise<MarketAnalysis | null> {
   try {
     const { data, error } = await supabase.functions.invoke('ai-market-estimate', {
-      body: {
-        codePostal,
-        ville,
-        surface,
-        nombrePieces,
-        ...additionalInfo
-      }
+      body: { codePostal, ville, surface, nombrePieces, ...additionalInfo }
     });
 
     if (error) {
-      console.error('Error fetching AI market data:', error);
+      console.error('Erreur IA market estimation:', error);
+      return null;
+    }
+
+    if (!data) {
+      console.log('Aucune donnée retournée par l\'IA');
       return null;
     }
 
@@ -83,6 +101,52 @@ async function fetchAIMarketData(
     return normalized;
   } catch (error) {
     console.error('Exception fetching AI market data:', error);
+    return null;
+  }
+}
+
+export async function fetchMarketData(
+  codePostal: string,
+  ville: string,
+  surface: number,
+  nombrePieces: number,
+  useAI: boolean = true,
+  additionalInfo?: any
+): Promise<MarketAnalysis | null> {
+  try {
+    // 1. Essayer d'abord l'API DVF réelle
+    console.log('Tentative de récupération des données DVF réelles...');
+    const dvfData = await fetchRealDVFData(codePostal, ville, surface, nombrePieces);
+    
+    // Si on a au moins 5 transactions similaires, utiliser les données DVF
+    if (dvfData && dvfData.nombre_transactions_similaires >= 5) {
+      console.log('Données DVF suffisantes:', dvfData.nombre_transactions_similaires, 'transactions');
+      return dvfData;
+    }
+    
+    // 2. Sinon, compléter avec l'IA
+    console.log('Données DVF insuffisantes, utilisation de l\'IA...');
+    if (useAI) {
+      const aiData = await fetchAIMarketData(codePostal, ville, surface, nombrePieces, additionalInfo);
+      
+      // Si on a des données DVF partielles, on peut les combiner
+      if (dvfData && aiData) {
+        return {
+          ...aiData,
+          source: 'Hybride',
+          nombre_transactions_similaires: dvfData.nombre_transactions_similaires,
+          transactions_similaires: dvfData.transactions_similaires
+        };
+      }
+      
+      return aiData;
+    }
+    
+    // Fallback sur les données DVF même si insuffisantes
+    return dvfData;
+    
+  } catch (error) {
+    console.error('Erreur dans fetchMarketData:', error);
     return null;
   }
 }
@@ -153,6 +217,7 @@ export function calculateFiabilite(
   let scoreAnciennete = 10;
   let moisDepuisMAJ = 12;
   let detailAnciennete = 'Données non datées';
+  let ancienneteWarning = false;
   
   if (chatgptAnalysis.date_donnees_marche) {
     const [month, year] = chatgptAnalysis.date_donnees_marche.split('/');
@@ -166,18 +231,29 @@ export function calculateFiabilite(
     } else if (moisDepuisMAJ < 12) {
       scoreAnciennete = 20;
       detailAnciennete = `Données moyennes (${moisDepuisMAJ} mois)`;
-      recommandations.push('Les données ont entre 6 et 12 mois. Une actualisation serait bénéfique.');
+      // Pour les données DVF, ne pas recommander d'actualisation (délai normal de publication)
+      if (marketAnalysis?.source !== 'DVF' && marketAnalysis?.source !== 'Hybride') {
+        recommandations.push('Les données ont entre 6 et 12 mois. Une actualisation serait bénéfique.');
+      }
     } else {
-      scoreAnciennete = 10;
-      detailAnciennete = `Données anciennes (${moisDepuisMAJ} mois)`;
-      recommandations.push('Les données ont plus d\'un an. Recommandé de vérifier les prix actuels du marché.');
+      // Pour les données DVF, accepter jusqu'à 12 mois comme "acceptable"
+      if (marketAnalysis?.source === 'DVF' || marketAnalysis?.source === 'Hybride') {
+        scoreAnciennete = 15;
+        detailAnciennete = 'Données DVF officielles (délai de publication normal)';
+        ancienneteWarning = false;
+      } else {
+        scoreAnciennete = 10;
+        detailAnciennete = `Données anciennes (${moisDepuisMAJ} mois)`;
+        ancienneteWarning = true;
+        recommandations.push('Les données ont plus d\'un an. Recommandé de vérifier les prix actuels du marché.');
+      }
     }
   }
   
   criteres.anciennete_donnees = {
     score: scoreAnciennete,
     detail: detailAnciennete,
-    warning: moisDepuisMAJ > 6
+    warning: ancienneteWarning
   };
   score += scoreAnciennete;
 

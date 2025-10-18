@@ -49,11 +49,17 @@ ${propertyInfo.taxe_fonciere ? `- Taxe foncière annuelle : ${propertyInfo.taxe_
 
 ${marketAnalysis ? `
 DONNÉES MARCHÉ EXISTANTES :
+- Source : ${marketAnalysis.source} ${marketAnalysis.source === 'DVF' ? '(transactions notariales officielles)' : marketAnalysis.source === 'Hybride' ? '(DVF + estimations IA)' : ''}
 - Prix moyen/m² dans le quartier : ${marketAnalysis.prix_moyen_m2_quartier?.toLocaleString() || 'N/A'} €
 - Fourchette marché : ${marketAnalysis.valeur_estimee_basse?.toLocaleString()} - ${marketAnalysis.valeur_estimee_haute?.toLocaleString()} €
 - Valeur médiane estimée : ${marketAnalysis.valeur_estimee_mediane?.toLocaleString()} €
 - Nombre transactions similaires : ${marketAnalysis.nombre_transactions_similaires || 0}
-- Source des données : ${marketAnalysis.source || 'N/A'}
+${marketAnalysis.transactions_similaires && marketAnalysis.transactions_similaires.length > 0 ? `
+- Exemples de transactions récentes :
+${marketAnalysis.transactions_similaires.slice(0, 3).map((t: any) => 
+  `  • ${t.adresse || 'Adresse non communiquée'} - ${t.prix_vente.toLocaleString()}€ - ${t.surface}m² - ${t.nombre_pieces} pièces - ${t.date_vente}`
+).join('\n')}
+` : ''}
 ` : ''}
 
 IMPORTANT : Dans ton analyse, PRÉCISE OBLIGATOIREMENT :
@@ -63,7 +69,14 @@ IMPORTANT : Dans ton analyse, PRÉCISE OBLIGATOIREMENT :
 Analyse précisément ce bien et fournis ton expertise.`;
 
     const systemPrompt = `Tu es un expert en immobilier français spécialisé dans l'analyse de marché. 
-Tu as accès à des données actualisées de sites comme SeLoger, PAP, LeBonCoin, MeilleursAgents.
+Tu as accès à des données de plusieurs sources :
+- API DVF (Demandes de Valeurs Foncières) : données officielles des transactions notariales (délai de publication : 6 mois)
+- Sites d'annonces : SeLoger, PAP, LeBonCoin, MeilleursAgents
+
+IMPORTANT sur la fraîcheur des données DVF :
+- Les données DVF officielles ont un délai de publication de 6 mois (c'est NORMAL pour les données notariales)
+- Une donnée DVF de 6-12 mois est considérée comme "moyenne" ou "récente" (c'est le cycle normal)
+- Ne pénalise PAS les données DVF pour ce délai, c'est inhérent au système officiel français
 
 Ton rôle :
 1. Analyser si le bien décrit est sous-coté, sur-coté ou au prix du marché
@@ -73,6 +86,11 @@ Ton rôle :
 5. Suggérer une marge de négociation réaliste
 
 Contexte : L'utilisateur souhaite acheter ce bien et a besoin d'une analyse objective.
+
+Pour "fraicheur_donnees", utilise cette logique :
+- "récente" : données DVF de moins de 6 mois OU données d'annonces de moins de 3 mois
+- "moyenne" : données DVF de 6-12 mois OU données d'annonces de 3-9 mois  
+- "ancienne" : données de plus de 12 mois
 
 Réponds UNIQUEMENT en JSON valide (sans balises de code markdown) suivant exactement cette structure :
 {
