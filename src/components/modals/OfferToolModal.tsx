@@ -515,7 +515,11 @@ Cordialement,
               <CardContent className="space-y-4">
                 <div>
                   <Label htmlFor="adresse">Adresse</Label>
-                  <Popover open={openAddressPopover && addressSuggestions.length > 0} onOpenChange={setOpenAddressPopover}>
+                  <Popover 
+                    open={openAddressPopover && addressSuggestions.length > 0} 
+                    onOpenChange={setOpenAddressPopover}
+                    modal={false}
+                  >
                     <PopoverAnchor asChild>
                       <div className="relative">
                         <Input
@@ -536,6 +540,11 @@ Cordialement,
                               setOpenAddressPopover(true);
                             }
                           }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') {
+                              setOpenAddressPopover(false);
+                            }
+                          }}
                           placeholder="Ex: 26 Avenue Gabriel Péri"
                           className="pr-10"
                           autoComplete="off"
@@ -550,8 +559,13 @@ Cordialement,
                         )}
                       </div>
                     </PopoverAnchor>
-                    <PopoverContent className="w-[400px] p-0" align="start" sideOffset={5}>
-                      <Command>
+                    <PopoverContent 
+                      className="w-[400px] p-0 bg-popover z-50" 
+                      align="start" 
+                      sideOffset={5}
+                      onOpenAutoFocus={(e) => e.preventDefault()}
+                    >
+                      <Command shouldFilter={false}>
                         <CommandList>
                           {addressSuggestions.length === 0 && !isLoadingAddress && addressSearch.length >= 3 && (
                             <CommandEmpty>Aucune adresse trouvée</CommandEmpty>
