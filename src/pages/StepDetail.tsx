@@ -3,16 +3,18 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Circle, ArrowLeft, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Circle, ArrowLeft, AlertTriangle, Target } from "lucide-react";
 import { mockProjectData } from "@/data/mockData";
 import { MissingInfoModal } from "@/components/modals/MissingInfoModal";
-import type { ChecklistItem } from "@/types/project";
+import { OfferToolModal } from "@/components/modals/OfferToolModal";
+import type { ChecklistItem, Offre } from "@/types/project";
 
 const StepDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [projectData, setProjectData] = useState(mockProjectData);
   const [showMissingModal, setShowMissingModal] = useState(false);
+  const [showOfferModal, setShowOfferModal] = useState(false);
 
   const step = projectData.steps.find((s) => s.id === id);
 
@@ -77,6 +79,20 @@ const StepDetail = () => {
     }));
   };
 
+  const handleUpdateOffre = (offre: Offre) => {
+    setProjectData((prev) => ({
+      ...prev,
+      offre,
+    }));
+  };
+
+  // Vérifier si on peut utiliser l'outil d'offre (toutes les étapes critiques précédentes sont OK)
+  const visitsStep = projectData.steps.find((s) => s.id === "visites");
+  const canUseOfferTool = visitsStep 
+    ? visitsStep.checklist.filter((item) => item.critical).every((item) => item.status === "done") &&
+      visitsStep.missing_info.every((m) => m.status === "present")
+    : false;
+
   return (
     <div className="max-w-4xl">
       <Button
@@ -110,42 +126,56 @@ const StepDetail = () => {
         </CardHeader>
         <CardContent className="space-y-3">
           {step.checklist.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-start gap-3 p-3 rounded-lg border border-border bg-card/50"
-            >
-              <button
-                onClick={() => handleToggleItem(item.id)}
-                className="shrink-0 mt-0.5"
-              >
-                {item.status === "done" ? (
-                  <CheckCircle2 className="h-5 w-5 text-primary" />
-                ) : item.status === "in_progress" ? (
-                  <Circle className="h-5 w-5 text-warning-foreground fill-warning/30" />
-                ) : (
-                  <Circle className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
-                )}
-              </button>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span
-                    className={`text-sm ${
-                      item.status === "done"
-                        ? "text-muted-foreground line-through"
-                        : item.status === "in_progress"
-                        ? "text-foreground font-medium"
-                        : "text-foreground"
-                    }`}
-                  >
-                    {item.label}
-                  </span>
-                  {item.critical && item.status === "todo" && (
-                    <Badge variant="outline" className="text-xs bg-warning/10 border-warning/30">
-                      Critique
-                    </Badge>
+            <div key={item.id}>
+              <div className="flex items-start gap-3 p-3 rounded-lg border border-border bg-card/50">
+                <button
+                  onClick={() => handleToggleItem(item.id)}
+                  className="shrink-0 mt-0.5"
+                >
+                  {item.status === "done" ? (
+                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                  ) : item.status === "in_progress" ? (
+                    <Circle className="h-5 w-5 text-warning-foreground fill-warning/30" />
+                  ) : (
+                    <Circle className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
                   )}
+                </button>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span
+                      className={`text-sm ${
+                        item.status === "done"
+                          ? "text-muted-foreground line-through"
+                          : item.status === "in_progress"
+                          ? "text-foreground font-medium"
+                          : "text-foreground"
+                      }`}
+                    >
+                      {item.label}
+                    </span>
+                    {item.critical && item.status === "todo" && (
+                      <Badge variant="outline" className="text-xs bg-warning/10 border-warning/30">
+                        Critique
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
+              
+              {/* CTA pour l'outil d'offre sur l'item "Evaluer valeur cible" */}
+              {step.id === "offre" && item.label.includes("Evaluer") && item.label.includes("valeur") && (
+                <div className="ml-8 mt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowOfferModal(true)}
+                    className="text-xs"
+                  >
+                    <Target className="h-3 w-3 mr-2" />
+                    Outil d'aide à l'offre
+                  </Button>
+                </div>
+              )}
             </div>
           ))}
         </CardContent>
@@ -183,6 +213,30 @@ const StepDetail = () => {
         catalogs={projectData.catalogs}
         onMarkReceived={handleMarkReceived}
       />
+
+      <OfferToolModal
+        open={showOfferModal}
+        onClose={() => setShowOfferModal(false)}
+        offre={projectData.offre}
+        onUpdateOffre={handleUpdateOffre}
+        canProceed={canUseOfferTool}
+      />
+
+      {projectData.offre.offre_acceptee && (
+        <div className="mt-6 p-4 rounded-lg bg-destructive/5 border border-destructive/20">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-destructive mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-foreground mb-1">
+                ⛔ Point de non-retour franchi
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Votre offre a été acceptée. Vous êtes désormais engagé juridiquement dans ce processus d'achat.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
