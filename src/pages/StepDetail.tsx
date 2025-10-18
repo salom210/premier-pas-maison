@@ -158,7 +158,7 @@ const StepDetail = () => {
               </div>
               
               {/* CTA pour l'outil d'offre sur l'item "Evaluer valeur cible" */}
-              {step.id === "offre" && item.label.includes("Evaluer") && item.label.includes("valeur") && (
+              {step.id === "offre" && item.id === "chk_o_01" && (
                 <div className="ml-8 mt-2">
                   <Button
                     variant="outline"
