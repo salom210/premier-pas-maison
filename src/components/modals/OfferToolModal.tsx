@@ -91,7 +91,7 @@ export function OfferToolModal({
       if (addressSearch) {
         searchAddress(addressSearch);
       }
-    }, 300);
+    }, 1000);
 
     return () => clearTimeout(timer);
   }, [addressSearch, searchAddress]);
