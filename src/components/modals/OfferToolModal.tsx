@@ -873,12 +873,54 @@ Cordialement,
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <MarketPositionChart
-                      prixDemande={localOffre.property_info.prix_demande}
-                      valeurBasse={localOffre.market_analysis.valeur_estimee_basse}
-                      valeurHaute={localOffre.market_analysis.valeur_estimee_haute}
-                      valeurMediane={localOffre.market_analysis.valeur_estimee_mediane}
-                    />
+                    {(() => {
+                      const prixDemande = localOffre.property_info.prix_demande;
+                      const valeurBasse = localOffre.market_analysis.valeur_estimee_basse;
+                      const valeurMediane = localOffre.market_analysis.valeur_estimee_mediane;
+                      const valeurHaute = localOffre.market_analysis.valeur_estimee_haute;
+                      
+                      const maxValue = Math.max(prixDemande, valeurHaute);
+                      const minValue = Math.min(valeurBasse, prixDemande);
+                      const range = maxValue - minValue;
+                      const scaleMin = minValue - (range * 0.1);
+                      const scaleMax = maxValue + (range * 0.1);
+                      const scaleRange = scaleMax - scaleMin;
+
+                      const getPosition = (value: number) => ((value - scaleMin) / scaleRange) * 100;
+
+                      const bars = [
+                        { label: "Prix demandé", value: prixDemande, color: "bg-primary", textColor: "text-primary" },
+                        { label: "Valeur basse", value: valeurBasse, color: "bg-destructive/70", textColor: "text-destructive" },
+                        { label: "Valeur médiane", value: valeurMediane, color: "bg-warning/70", textColor: "text-warning" },
+                        { label: "Valeur haute", value: valeurHaute, color: "bg-success/70", textColor: "text-success" }
+                      ];
+
+                      return (
+                        <div className="space-y-6 py-2">
+                          {bars.map((bar, idx) => (
+                            <div key={idx} className="space-y-2">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="font-medium text-foreground">{bar.label}</span>
+                                <span className={`font-bold ${bar.textColor}`}>
+                                  {bar.value.toLocaleString('fr-FR')} €
+                                </span>
+                              </div>
+                              <div className="relative h-8 bg-muted/30 rounded-full overflow-hidden">
+                                <div 
+                                  className={`absolute top-0 left-0 h-full ${bar.color} rounded-full transition-all duration-500`}
+                                  style={{ width: `${getPosition(bar.value)}%` }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                          
+                          <div className="flex justify-between text-xs text-muted-foreground pt-2 border-t">
+                            <span>{scaleMin.toLocaleString('fr-FR')} €</span>
+                            <span>{scaleMax.toLocaleString('fr-FR')} €</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </CardContent>
                 </Card>
 
