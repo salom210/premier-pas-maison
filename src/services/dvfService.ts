@@ -6,7 +6,7 @@ export async function fetchMarketData(
   ville: string,
   surface: number,
   nombrePieces: number,
-  useAI = false,
+  useAI = true, // Toujours utiliser l'IA maintenant
   additionalInfo?: {
     etage?: number;
     dernier_etage?: boolean;
@@ -16,34 +16,8 @@ export async function fetchMarketData(
     prix_demande?: number;
   }
 ): Promise<MarketAnalysis | null> {
-  try {
-    // Si on force l'IA ou si on veut tester l'IA en priorité
-    if (useAI) {
-      return await fetchAIMarketData(codePostal, ville, surface, nombrePieces, additionalInfo);
-    }
-
-    // Tenter d'abord DVF
-    const { data, error } = await supabase.functions.invoke('dvf-market-data', {
-      body: {
-        codePostal,
-        ville,
-        surface,
-        nombrePieces
-      }
-    });
-
-    // Si DVF échoue ou ne retourne rien, fallback sur l'IA
-    if (error || !data || data.nombre_transactions === 0) {
-      console.log('DVF failed or no data, falling back to AI estimation');
-      return await fetchAIMarketData(codePostal, ville, surface, nombrePieces, additionalInfo);
-    }
-
-    return { ...data, source: 'DVF' } as MarketAnalysis;
-  } catch (error) {
-    console.error('Exception fetching market data:', error);
-    // Fallback sur l'IA en cas d'exception
-    return await fetchAIMarketData(codePostal, ville, surface, nombrePieces, additionalInfo);
-  }
+  // Utiliser exclusivement l'IA pour l'estimation de marché
+  return await fetchAIMarketData(codePostal, ville, surface, nombrePieces, additionalInfo);
 }
 
 async function fetchAIMarketData(
@@ -76,7 +50,23 @@ async function fetchAIMarketData(
       return null;
     }
 
-    return { ...data, source: 'IA' } as MarketAnalysis;
+    // Normaliser la réponse de l'IA pour correspondre à MarketAnalysis
+    const normalized: MarketAnalysis = {
+      prix_moyen_m2_quartier: data.prix_moyen_m2 || data.prix_moyen_m2_quartier || Math.round(data.valeur_estimee_mediane / surface),
+      prix_moyen_m2_ville: data.prix_moyen_m2_ville || data.prix_moyen_m2 || data.prix_moyen_m2_quartier || Math.round(data.valeur_estimee_mediane / surface),
+      prix_min_m2: data.prix_min_m2 || Math.round(data.valeur_estimee_basse / surface),
+      prix_max_m2: data.prix_max_m2 || Math.round(data.valeur_estimee_haute / surface),
+      valeur_estimee_basse: Math.round(data.valeur_estimee_basse),
+      valeur_estimee_mediane: Math.round(data.valeur_estimee_mediane),
+      valeur_estimee_haute: Math.round(data.valeur_estimee_haute),
+      nombre_transactions_similaires: data.nombre_transactions || 0,
+      ecart_prix_demande_vs_marche: data.ecart_prix_demande_vs_marche || 0,
+      conclusion: data.conclusion || 'correct',
+      source: 'IA',
+      derniere_maj: new Date().toISOString()
+    };
+
+    return normalized;
   } catch (error) {
     console.error('Exception fetching AI market data:', error);
     return null;

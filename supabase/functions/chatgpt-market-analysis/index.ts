@@ -74,20 +74,20 @@ Ton rôle :
 
 Contexte : L'utilisateur souhaite acheter ce bien et a besoin d'une analyse objective.
 
-Réponds UNIQUEMENT en JSON valide suivant exactement cette structure :
+Réponds UNIQUEMENT en JSON valide (sans balises de code markdown) suivant exactement cette structure :
 {
-  "conclusion": "sous-cote" | "correct" | "sur-cote",
-  "ecart_estime": number (% positif si survalorisé, négatif si sous-coté),
-  "prix_juste_estime": number (en euros),
-  "marge_negociation": number (% de réduction suggérée),
-  "analyse_qualitative": "string (max 300 caractères)",
-  "points_forts": ["string", "string", ...] (2-4 points),
-  "points_faibles": ["string", "string", ...] (2-4 points),
-  "recommandation": "string (max 200 caractères)",
-  "confiance": "faible" | "moyenne" | "élevée",
-  "sources_comparaison": "string (explique quelles sources tu as utilisées)",
+  "conclusion": "sous-cote" ou "correct" ou "sur-cote",
+  "ecart_estime": number,
+  "prix_juste_estime": number,
+  "marge_negociation": number,
+  "analyse_qualitative": "string",
+  "points_forts": ["string", "string"],
+  "points_faibles": ["string", "string"],
+  "recommandation": "string",
+  "confiance": "faible" ou "moyenne" ou "élevée",
+  "sources_comparaison": "string",
   "date_donnees_marche": "MM/YYYY",
-  "fraicheur_donnees": "récente" | "moyenne" | "ancienne"
+  "fraicheur_donnees": "récente" ou "moyenne" ou "ancienne"
 }`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -127,17 +127,47 @@ Réponds UNIQUEMENT en JSON valide suivant exactement cette structure :
     }
 
     const data = await response.json();
-    const content = data.choices[0].message.content;
+    let content = data.choices[0].message.content as string;
     console.log('Lovable AI response:', content);
 
-    const analysis = JSON.parse(content);
+    // Nettoyer le contenu (retirer les balises ```json si présentes)
+    let cleaned = content.trim();
+    if (cleaned.startsWith('```')) {
+      // Retirer ```json ou ``` en début et ``` en fin
+      cleaned = cleaned.replace(/^```[a-zA-Z]*\s*/, '').replace(/```\s*$/, '').trim();
+    }
+
+    // Parser le JSON
+    let analysis;
+    try {
+      analysis = JSON.parse(cleaned);
+    } catch (parseError) {
+      // Tentative de récupération: extraire entre { et }
+      const start = cleaned.indexOf('{');
+      const end = cleaned.lastIndexOf('}');
+      if (start !== -1 && end !== -1 && end > start) {
+        try {
+          analysis = JSON.parse(cleaned.slice(start, end + 1));
+        } catch {
+          throw new Error('Invalid JSON format from Lovable AI');
+        }
+      } else {
+        throw new Error('Invalid JSON format from Lovable AI');
+      }
+    }
     
-    // Validation de la structure
-    if (!analysis.conclusion || !analysis.ecart_estime || !analysis.prix_juste_estime || 
-        !analysis.marge_negociation || !analysis.analyse_qualitative || 
-        !analysis.points_forts || !analysis.points_faibles || 
-        !analysis.recommandation || !analysis.confiance || 
-        !analysis.sources_comparaison || !analysis.date_donnees_marche || 
+    // Validation de la structure (vérifier présence et type, pas "truthy")
+    if (!analysis.conclusion || 
+        !('ecart_estime' in analysis && typeof analysis.ecart_estime === 'number') || 
+        !('prix_juste_estime' in analysis && typeof analysis.prix_juste_estime === 'number') || 
+        !('marge_negociation' in analysis && typeof analysis.marge_negociation === 'number') || 
+        !analysis.analyse_qualitative || 
+        !Array.isArray(analysis.points_forts) || 
+        !Array.isArray(analysis.points_faibles) || 
+        !analysis.recommandation || 
+        !analysis.confiance || 
+        !analysis.sources_comparaison || 
+        !analysis.date_donnees_marche || 
         !analysis.fraicheur_donnees) {
       throw new Error('Invalid response structure from Lovable AI');
     }
