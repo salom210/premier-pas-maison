@@ -858,18 +858,8 @@ Cordialement,
                 />
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base flex items-center justify-between">
-                      <span className="flex items-center gap-2">
-                        Position du bien sur le marché
-                        {localOffre.market_analysis.source && (
-                          <Badge variant="secondary" className="text-xs">
-                            Source: {localOffre.market_analysis.source}
-                          </Badge>
-                        )}
-                      </span>
-                      <Badge variant="outline" className={getConclusionColor(localOffre.market_analysis.conclusion)}>
-                        {getConclusionLabel(localOffre.market_analysis.conclusion)}
-                      </Badge>
+                    <CardTitle className="text-base">
+                      Position du bien sur le marché
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -882,41 +872,107 @@ Cordialement,
                       const maxValue = Math.max(prixDemande, valeurHaute);
                       const minValue = Math.min(valeurBasse, prixDemande);
                       const range = maxValue - minValue;
-                      const scaleMin = minValue - (range * 0.1);
-                      const scaleMax = maxValue + (range * 0.1);
+                      const scaleMin = minValue - (range * 0.15);
+                      const scaleMax = maxValue + (range * 0.15);
                       const scaleRange = scaleMax - scaleMin;
 
                       const getPosition = (value: number) => ((value - scaleMin) / scaleRange) * 100;
-
-                      const bars = [
-                        { label: "Prix demandé", value: prixDemande, color: "bg-primary", textColor: "text-primary" },
-                        { label: "Valeur basse", value: valeurBasse, color: "bg-destructive/70", textColor: "text-destructive" },
-                        { label: "Valeur médiane", value: valeurMediane, color: "bg-warning/70", textColor: "text-warning" },
-                        { label: "Valeur haute", value: valeurHaute, color: "bg-success/70", textColor: "text-success" }
-                      ];
+                      
+                      const positionBasse = getPosition(valeurBasse);
+                      const positionHaute = getPosition(valeurHaute);
+                      const positionPrixDemande = getPosition(prixDemande);
 
                       return (
-                        <div className="space-y-6 py-2">
-                          {bars.map((bar, idx) => (
-                            <div key={idx} className="space-y-2">
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="font-medium text-foreground">{bar.label}</span>
-                                <span className={`font-bold ${bar.textColor}`}>
-                                  {bar.value.toLocaleString('fr-FR')} €
-                                </span>
-                              </div>
-                              <div className="relative h-8 bg-muted/30 rounded-full overflow-hidden">
-                                <div 
-                                  className={`absolute top-0 left-0 h-full ${bar.color} rounded-full transition-all duration-500`}
-                                  style={{ width: `${getPosition(bar.value)}%` }}
-                                />
+                        <div className="space-y-6 py-4">
+                          {/* Barre avec zones colorées et curseur */}
+                          <div className="relative h-24 px-2">
+                            {/* Barre de fond avec 3 zones colorées */}
+                            <div className="absolute w-full h-4 top-12 rounded-full overflow-hidden flex">
+                              {/* Zone rouge (survalorisé) */}
+                              <div 
+                                className="bg-destructive/60" 
+                                style={{ width: `${positionBasse}%` }}
+                              />
+                              {/* Zone jaune (raisonnable) */}
+                              <div 
+                                className="bg-warning/60" 
+                                style={{ width: `${positionHaute - positionBasse}%` }}
+                              />
+                              {/* Zone verte (bonne affaire) */}
+                              <div 
+                                className="bg-success/60" 
+                                style={{ width: `${100 - positionHaute}%` }}
+                              />
+                            </div>
+                            
+                            {/* Curseur prix demandé */}
+                            <div 
+                              className="absolute top-0 -translate-x-1/2 z-10"
+                              style={{ left: `${positionPrixDemande}%` }}
+                            >
+                              <div className="flex flex-col items-center">
+                                <div className="bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-bold whitespace-nowrap mb-1">
+                                  {prixDemande.toLocaleString('fr-FR')} €
+                                </div>
+                                <div className="w-0.5 h-6 bg-primary" />
+                                <div className="w-4 h-4 bg-primary rounded-full border-2 border-background shadow-lg" />
                               </div>
                             </div>
-                          ))}
+                            
+                            {/* Marqueur valeur basse */}
+                            <div 
+                              className="absolute bottom-0 -translate-x-1/2"
+                              style={{ left: `${positionBasse}%` }}
+                            >
+                              <div className="flex flex-col items-center">
+                                <div className="w-0.5 h-3 bg-muted-foreground/50" />
+                                <div className="text-xs text-muted-foreground font-medium mt-1 whitespace-nowrap">
+                                  {valeurBasse.toLocaleString('fr-FR')} €
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Marqueur valeur médiane */}
+                            <div 
+                              className="absolute bottom-0 -translate-x-1/2"
+                              style={{ left: `${getPosition(valeurMediane)}%` }}
+                            >
+                              <div className="flex flex-col items-center">
+                                <div className="w-0.5 h-3 bg-muted-foreground/50" />
+                                <div className="text-xs text-muted-foreground font-medium mt-1 whitespace-nowrap">
+                                  {valeurMediane.toLocaleString('fr-FR')} €
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Marqueur valeur haute */}
+                            <div 
+                              className="absolute bottom-0 -translate-x-1/2"
+                              style={{ left: `${positionHaute}%` }}
+                            >
+                              <div className="flex flex-col items-center">
+                                <div className="w-0.5 h-3 bg-muted-foreground/50" />
+                                <div className="text-xs text-muted-foreground font-medium mt-1 whitespace-nowrap">
+                                  {valeurHaute.toLocaleString('fr-FR')} €
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                           
-                          <div className="flex justify-between text-xs text-muted-foreground pt-2 border-t">
-                            <span>{scaleMin.toLocaleString('fr-FR')} €</span>
-                            <span>{scaleMax.toLocaleString('fr-FR')} €</span>
+                          {/* Légende */}
+                          <div className="flex flex-wrap gap-4 justify-center text-xs">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-destructive/60" />
+                              <span className="text-muted-foreground">Survalorisé</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-warning/60" />
+                              <span className="text-muted-foreground">Zone raisonnable</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-success/60" />
+                              <span className="text-muted-foreground">Bonne affaire</span>
+                            </div>
                           </div>
                         </div>
                       );
