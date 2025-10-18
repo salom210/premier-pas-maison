@@ -83,6 +83,142 @@ async function fetchAIMarketData(
   }
 }
 
+export async function fetchChatGPTAnalysis(
+  propertyInfo: any,
+  marketAnalysis: MarketAnalysis | null
+): Promise<any> {
+  try {
+    const { data, error } = await supabase.functions.invoke('chatgpt-market-analysis', {
+      body: {
+        propertyInfo,
+        marketAnalysis
+      }
+    });
+
+    if (error) {
+      console.error('Error fetching ChatGPT analysis:', error);
+      return null;
+    }
+
+    return { ...data, timestamp: new Date().toISOString() };
+  } catch (error) {
+    console.error('Exception fetching ChatGPT analysis:', error);
+    return null;
+  }
+}
+
+export function calculateFiabilite(
+  chatgptAnalysis: any,
+  marketAnalysis: MarketAnalysis | null,
+  propertyInfo: any
+): any {
+  let score = 0;
+  const criteres: any = {};
+  const recommandations: string[] = [];
+
+  // 1. Ancienneté des données (30 points max)
+  let scoreAnciennete = 10;
+  let moisDepuisMAJ = 12;
+  let detailAnciennete = 'Données non datées';
+  
+  if (chatgptAnalysis.date_donnees_marche) {
+    const [month, year] = chatgptAnalysis.date_donnees_marche.split('/');
+    const dateMAJ = new Date(parseInt('20' + year), parseInt(month) - 1);
+    const now = new Date();
+    moisDepuisMAJ = Math.floor((now.getTime() - dateMAJ.getTime()) / (1000 * 60 * 60 * 24 * 30));
+    
+    if (moisDepuisMAJ < 6) {
+      scoreAnciennete = 30;
+      detailAnciennete = `Données récentes (${moisDepuisMAJ} mois)`;
+    } else if (moisDepuisMAJ < 12) {
+      scoreAnciennete = 20;
+      detailAnciennete = `Données moyennes (${moisDepuisMAJ} mois)`;
+      recommandations.push('Les données ont entre 6 et 12 mois. Une actualisation serait bénéfique.');
+    } else {
+      scoreAnciennete = 10;
+      detailAnciennete = `Données anciennes (${moisDepuisMAJ} mois)`;
+      recommandations.push('Les données ont plus d\'un an. Recommandé de vérifier les prix actuels du marché.');
+    }
+  }
+  
+  criteres.anciennete_donnees = {
+    score: scoreAnciennete,
+    detail: detailAnciennete,
+    warning: moisDepuisMAJ > 6
+  };
+  score += scoreAnciennete;
+
+  // 2. Complétude du bien (25 points max)
+  const champsImportants = [
+    'adresse', 'code_postal', 'ville', 'surface_habitable', 'nombre_pieces',
+    'nombre_chambres', 'etat', 'prix_demande', 'etage', 'annee_construction',
+    'dpe', 'charges_trimestrielles', 'taxe_fonciere'
+  ];
+  const champsRemplis = champsImportants.filter(champ => 
+    propertyInfo[champ] !== null && 
+    propertyInfo[champ] !== undefined && 
+    propertyInfo[champ] !== ''
+  ).length;
+  const completude = (champsRemplis / champsImportants.length) * 100;
+  
+  let scoreCompletude = 5;
+  if (completude > 80) scoreCompletude = 25;
+  else if (completude > 60) scoreCompletude = 15;
+  else recommandations.push('Complétez les informations du bien pour une analyse plus précise.');
+  
+  criteres.completude_bien = {
+    score: scoreCompletude,
+    detail: `${champsRemplis}/${champsImportants.length} champs renseignés (${Math.round(completude)}%)`,
+    warning: completude < 60
+  };
+  score += scoreCompletude;
+
+  // 3. Confiance IA (25 points max)
+  let scoreConfiance = 5;
+  if (chatgptAnalysis.confiance === 'élevée') scoreConfiance = 25;
+  else if (chatgptAnalysis.confiance === 'moyenne') scoreConfiance = 15;
+  else recommandations.push('L\'IA a une confiance limitée. Croiser avec d\'autres sources.');
+  
+  criteres.confiance_ia = {
+    score: scoreConfiance,
+    detail: `Niveau: ${chatgptAnalysis.confiance}`,
+    warning: chatgptAnalysis.confiance === 'faible'
+  };
+  score += scoreConfiance;
+
+  // 4. Transactions comparables (20 points max)
+  const nbTransactions = marketAnalysis?.nombre_transactions_similaires || 0;
+  let scoreTransactions = 5;
+  if (nbTransactions > 20) scoreTransactions = 20;
+  else if (nbTransactions > 10) scoreTransactions = 15;
+  else if (nbTransactions > 0) scoreTransactions = 10;
+  else recommandations.push('Peu de transactions comparables trouvées. Prudence sur l\'estimation.');
+  
+  criteres.transactions_comparables = {
+    score: scoreTransactions,
+    detail: `${nbTransactions} biens similaires`,
+    warning: nbTransactions < 10
+  };
+  score += scoreTransactions;
+
+  // Déterminer le niveau
+  let niveau: 'élevée' | 'moyenne' | 'faible';
+  if (score >= 75) niveau = 'élevée';
+  else if (score >= 50) niveau = 'moyenne';
+  else niveau = 'faible';
+
+  if (score < 60) {
+    recommandations.push('Fiabilité limitée : complétez les informations et vérifiez avec d\'autres sources.');
+  }
+
+  return {
+    score,
+    niveau,
+    criteres,
+    recommandations
+  };
+}
+
 export function calculerProbabiliteAcceptation(
   montant_offre: number,
   prix_demande: number,

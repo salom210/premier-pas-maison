@@ -326,6 +326,8 @@ export const mockProjectData: ProjectData = {
   offre: {
     property_info: null,
     market_analysis: null,
+    chatgpt_analysis: null,
+    fiabilite: null,
     scenarios: [
       { 
         id: "conservative", 

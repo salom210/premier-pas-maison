@@ -15,14 +15,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { AlertTriangle, TrendingUp, FileText, CheckCircle2, Home, BarChart3, Lightbulb, Loader2, MapPin } from "lucide-react";
+import { AlertTriangle, TrendingUp, FileText, CheckCircle2, Home, BarChart3, Lightbulb, Loader2, MapPin, RefreshCw, ArrowRight } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger, PopoverAnchor } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
-import type { Offre, OffreScenario, PropertyInfo, MarketAnalysis } from "@/types/project";
-import { fetchMarketData, calculerProbabiliteAcceptation } from "@/services/dvfService";
+import type { Offre, OffreScenario, PropertyInfo, MarketAnalysis, ChatGPTAnalysis, FiabiliteAnalysis } from "@/types/project";
+import { fetchMarketData, fetchChatGPTAnalysis, calculateFiabilite, calculerProbabiliteAcceptation } from "@/services/dvfService";
 import { MarketPositionChart } from "@/components/MarketPositionChart";
 import { ScenarioCard } from "@/components/ScenarioCard";
+import { PropertyInfoSummary } from "@/components/PropertyInfoSummary";
+import { ChatGPTAnalysisCard } from "@/components/ChatGPTAnalysisCard";
+import { FiabiliteGauge } from "@/components/FiabiliteGauge";
 
 interface OfferToolModalProps {
   open: boolean;
@@ -46,7 +49,6 @@ export function OfferToolModal({
   const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
   const [isLoadingAddress, setIsLoadingAddress] = useState(false);
   const [openAddressPopover, setOpenAddressPopover] = useState(false);
-  const [useAI, setUseAI] = useState(false);
   const [testResults, setTestResults] = useState<any[]>([]);
   const [isRunningTests, setIsRunningTests] = useState(false);
   const { toast } = useToast();
@@ -128,8 +130,8 @@ export function OfferToolModal({
     });
   };
 
-  // Fetch market data
-  const handleFetchMarketData = async (forceAI = false) => {
+  // Fetch market data with ChatGPT analysis
+  const handleFetchMarketData = async () => {
     if (!localOffre.property_info) {
       toast({
         title: "Informations manquantes",
@@ -152,12 +154,13 @@ export function OfferToolModal({
 
     setIsLoadingMarket(true);
     try {
+      // 1. Analyse quantitative (DVF/IA)
       const marketData = await fetchMarketData(
         code_postal,
         ville,
         surface_habitable,
         nombre_pieces,
-        forceAI || useAI,
+        false,
         {
           etage,
           dernier_etage,
@@ -168,42 +171,55 @@ export function OfferToolModal({
         }
       );
 
-      if (marketData) {
-        // Calculer l'écart avec le prix demandé
-        const ecart = localOffre.property_info.prix_demande 
-          ? ((localOffre.property_info.prix_demande - marketData.valeur_estimee_mediane) / marketData.valeur_estimee_mediane) * 100
-          : 0;
-
-        marketData.ecart_prix_demande_vs_marche = Math.round(ecart);
-        
-        if (ecart < -5) marketData.conclusion = 'bonne-affaire';
-        else if (ecart > 10) marketData.conclusion = 'survalorise';
-        else marketData.conclusion = 'correct';
-
-        setLocalOffre({
-          ...localOffre,
-          market_analysis: marketData
-        });
-
-        // Générer automatiquement les scénarios
-        generateScenarios(marketData, localOffre.property_info);
-
-        const source = marketData.source === 'IA' ? 'IA' : 'DVF';
-        toast({
-          title: `Analyse de marché récupérée (${source})`,
-          description: marketData.nombre_transactions_similaires 
-            ? `${marketData.nombre_transactions_similaires} transactions similaires trouvées.`
-            : 'Estimation basée sur l\'analyse IA.'
-        });
-
-        setActiveTab("marche");
-      } else {
+      if (!marketData) {
         toast({
           title: "Erreur",
           description: "Impossible de récupérer les données de marché.",
           variant: "destructive"
         });
+        return;
       }
+
+      // Calculer l'écart avec le prix demandé
+      const ecart = localOffre.property_info.prix_demande 
+        ? ((localOffre.property_info.prix_demande - marketData.valeur_estimee_mediane) / marketData.valeur_estimee_mediane) * 100
+        : 0;
+
+      marketData.ecart_prix_demande_vs_marche = Math.round(ecart);
+      
+      if (ecart < -5) marketData.conclusion = 'bonne-affaire';
+      else if (ecart > 10) marketData.conclusion = 'survalorise';
+      else marketData.conclusion = 'correct';
+
+      // 2. Analyse qualitative (ChatGPT) - TOUJOURS appelée
+      const chatgptAnalysis = await fetchChatGPTAnalysis(localOffre.property_info, marketData);
+
+      let fiabiliteScore = null;
+      if (chatgptAnalysis) {
+        fiabiliteScore = calculateFiabilite(chatgptAnalysis, marketData, localOffre.property_info);
+      }
+
+      setLocalOffre({
+        ...localOffre,
+        market_analysis: marketData,
+        chatgpt_analysis: chatgptAnalysis,
+        fiabilite: fiabiliteScore
+      });
+
+      // Générer automatiquement les scénarios
+      generateScenarios(marketData, localOffre.property_info);
+
+      const source = marketData.source === 'IA' ? 'IA' : 'DVF';
+      const analysisType = chatgptAnalysis ? `${source} + Analyse experte IA` : source;
+      
+      toast({
+        title: `Analyse de marché complète (${analysisType})`,
+        description: marketData.nombre_transactions_similaires 
+          ? `${marketData.nombre_transactions_similaires} transactions similaires trouvées.`
+          : 'Estimation basée sur l\'analyse IA.'
+      });
+
+      setActiveTab("marche");
     } catch (error) {
       toast({
         title: "Erreur",
@@ -814,19 +830,9 @@ Cordialement,
               </CardContent>
             </Card>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="useAI"
-                  checked={useAI}
-                  onCheckedChange={setUseAI}
-                />
-                <Label htmlFor="useAI" className="text-sm cursor-pointer">
-                  Forcer l'estimation IA
-                </Label>
-              </div>
+            <div className="flex justify-end">
               <Button 
-                onClick={() => handleFetchMarketData(false)}
+                onClick={handleFetchMarketData}
                 disabled={isLoadingMarket || !localOffre.property_info}
                 size="lg"
               >
@@ -847,48 +853,13 @@ Cordialement,
 
           {/* TAB 2: MARCHÉ */}
           <TabsContent value="marche" className="space-y-4 mt-4">
-            {/* Tests fonctionnels */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Lightbulb className="h-4 w-4" />
-                  Tests marché (Debug)
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Testez l'analyse de marché avec 3 scénarios prédéfinis pour valider le bon fonctionnement.
-                </p>
-                <Button 
-                  onClick={runFunctionalTests}
-                  disabled={isRunningTests}
-                  variant="outline"
-                  size="sm"
-                >
-                  {isRunningTests ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Tests en cours...
-                    </>
-                  ) : (
-                    'Exécuter les tests'
-                  )}
-                </Button>
-                {testResults.length > 0 && (
-                  <div className="space-y-2">
-                    {testResults.map((result, index) => (
-                      <div key={index} className={`p-3 rounded-md border ${result.success ? 'bg-success/5 border-success/20' : 'bg-destructive/5 border-destructive/20'}`}>
-                        <p className="text-sm font-medium">{result.name}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{result.message}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
             {localOffre.market_analysis && localOffre.property_info && (
               <>
+                {/* Résumé du bien avec bouton Modifier */}
+                <PropertyInfoSummary 
+                  propertyInfo={localOffre.property_info}
+                  onEdit={() => setActiveTab("bien")}
+                />
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base flex items-center justify-between">
@@ -978,13 +949,79 @@ Cordialement,
                   </Card>
                 )}
 
-                <div className="flex justify-end">
-                  <Button onClick={() => setActiveTab("scenarios")}>
-                    Voir les scénarios d'offre
+                {/* Jauge de fiabilité */}
+                {localOffre.fiabilite && (
+                  <FiabiliteGauge fiabilite={localOffre.fiabilite} />
+                )}
+
+                {/* Analyse ChatGPT */}
+                {localOffre.chatgpt_analysis && (
+                  <ChatGPTAnalysisCard 
+                    analysis={localOffre.chatgpt_analysis}
+                    prixDemande={localOffre.property_info.prix_demande}
+                  />
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-3">
+                  <Button 
+                    onClick={handleFetchMarketData} 
+                    variant="outline"
+                    disabled={isLoadingMarket}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Rafraîchir l'analyse
+                  </Button>
+                  <Button 
+                    onClick={() => setActiveTab("scenarios")}
+                    className="flex-1"
+                  >
+                    Générer des scénarios d'offre
+                    <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
                 </div>
               </>
             )}
+
+            {/* Tests fonctionnels */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Lightbulb className="h-4 w-4" />
+                  Tests marché (Debug)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Testez l'analyse de marché avec 3 scénarios prédéfinis pour valider le bon fonctionnement.
+                </p>
+                <Button 
+                  onClick={runFunctionalTests}
+                  disabled={isRunningTests}
+                  variant="outline"
+                  size="sm"
+                >
+                  {isRunningTests ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Tests en cours...
+                    </>
+                  ) : (
+                    'Exécuter les tests'
+                  )}
+                </Button>
+                {testResults.length > 0 && (
+                  <div className="space-y-2">
+                    {testResults.map((result, index) => (
+                      <div key={index} className={`p-3 rounded-md border ${result.success ? 'bg-success/5 border-success/20' : 'bg-destructive/5 border-destructive/20'}`}>
+                        <p className="text-sm font-medium">{result.name}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{result.message}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* TAB 3: SCÉNARIOS */}

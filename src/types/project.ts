@@ -157,9 +157,45 @@ export interface Projection {
   gain_net: number | null;
 }
 
+export interface ChatGPTAnalysis {
+  conclusion: 'sous-cote' | 'correct' | 'sur-cote';
+  ecart_estime: number;
+  prix_juste_estime: number;
+  marge_negociation: number;
+  analyse_qualitative: string;
+  points_forts: string[];
+  points_faibles: string[];
+  recommandation: string;
+  confiance: 'faible' | 'moyenne' | 'élevée';
+  sources_comparaison: string;
+  date_donnees_marche: string;
+  fraicheur_donnees: 'récente' | 'moyenne' | 'ancienne';
+  timestamp: string;
+}
+
+export interface FiabiliteCritere {
+  score: number;
+  detail: string;
+  warning?: boolean;
+}
+
+export interface FiabiliteAnalysis {
+  score: number;
+  niveau: 'élevée' | 'moyenne' | 'faible';
+  criteres: {
+    anciennete_donnees: FiabiliteCritere;
+    completude_bien: FiabiliteCritere;
+    confiance_ia: FiabiliteCritere;
+    transactions_comparables: FiabiliteCritere;
+  };
+  recommandations: string[];
+}
+
 export interface Offre {
   property_info: PropertyInfo | null;
   market_analysis: MarketAnalysis | null;
+  chatgpt_analysis: ChatGPTAnalysis | null;
+  fiabilite: FiabiliteAnalysis | null;
   scenarios: OffreScenario[];
   scenario_actif: string;
   draft: string;
