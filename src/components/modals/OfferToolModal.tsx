@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { AlertTriangle, TrendingUp, FileText, CheckCircle2, Home, BarChart3, Lightbulb, Loader2, MapPin } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger, PopoverAnchor } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import type { Offre, OffreScenario, PropertyInfo, MarketAnalysis } from "@/types/project";
@@ -86,9 +86,17 @@ export function OfferToolModal({
 
   const selectAddress = (feature: any) => {
     const props = feature.properties;
-    updatePropertyInfo("adresse", props.name);
-    updatePropertyInfo("code_postal", props.postcode);
-    updatePropertyInfo("ville", props.city);
+    
+    setLocalOffre(prev => ({
+      ...prev,
+      property_info: {
+        ...prev.property_info,
+        adresse: props.name,
+        code_postal: props.postcode,
+        ville: props.city,
+      }
+    }));
+    
     setAddressSearch(props.name);
     setOpenAddressPopover(false);
   };
@@ -424,37 +432,40 @@ Cordialement,
                 <div>
                   <Label htmlFor="adresse">Adresse</Label>
                   <Popover open={openAddressPopover && addressSuggestions.length > 0} onOpenChange={setOpenAddressPopover}>
-                    <div className="relative">
-                      <Input
-                        id="adresse"
-                        value={addressSearch || localOffre.property_info?.adresse || ""}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setAddressSearch(value);
-                          if (value.length >= 3) {
-                            setOpenAddressPopover(true);
-                          } else {
-                            setOpenAddressPopover(false);
-                          }
-                        }}
-                        onFocus={() => {
-                          if (addressSearch.length >= 3 && addressSuggestions.length > 0) {
-                            setOpenAddressPopover(true);
-                          }
-                        }}
-                        placeholder="Ex: 26 Avenue Gabriel Péri"
-                        className="pr-10"
-                        autoComplete="off"
-                        autoCorrect="off"
-                        autoCapitalize="off"
-                        spellCheck="false"
-                      />
-                      {isLoadingAddress ? (
-                        <Loader2 className="h-4 w-4 animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      ) : (
-                        <MapPin className="h-4 w-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      )}
-                    </div>
+                    <PopoverAnchor asChild>
+                      <div className="relative">
+                        <Input
+                          id="adresse"
+                          value={addressSearch || localOffre.property_info?.adresse || ""}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setAddressSearch(value);
+                            searchAddress(value);
+                            if (value.length >= 3) {
+                              setOpenAddressPopover(true);
+                            } else {
+                              setOpenAddressPopover(false);
+                            }
+                          }}
+                          onFocus={() => {
+                            if (addressSearch.length >= 3 && addressSuggestions.length > 0) {
+                              setOpenAddressPopover(true);
+                            }
+                          }}
+                          placeholder="Ex: 26 Avenue Gabriel Péri"
+                          className="pr-10"
+                          autoComplete="off"
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck="false"
+                        />
+                        {isLoadingAddress ? (
+                          <Loader2 className="h-4 w-4 animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        ) : (
+                          <MapPin className="h-4 w-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        )}
+                      </div>
+                    </PopoverAnchor>
                     <PopoverContent className="w-[400px] p-0" align="start" sideOffset={5}>
                       <Command>
                         <CommandList>
