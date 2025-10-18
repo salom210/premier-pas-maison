@@ -94,10 +94,40 @@ export interface UIState {
   show_only_blockers: boolean;
 }
 
+export interface OffreScenario {
+  id: string;
+  montant: number | null;
+  clauses: string[];
+  delai_reponse: number;
+  commentaire: string;
+}
+
+export interface Market {
+  ref_price_m2: number | null;
+  source: string | null;
+}
+
+export interface Projection {
+  taux_annuel: number;
+  frais_revente: number;
+  valeur_future: number | null;
+  gain_net: number | null;
+}
+
+export interface Offre {
+  scenarios: OffreScenario[];
+  scenario_actif: string;
+  draft: string;
+  offre_acceptee: boolean;
+  market: Market;
+  projection: Projection;
+}
+
 export interface ProjectData {
   user: User;
   catalogs: Catalogs;
   rules: Rules;
   steps: Step[];
   ui: UIState;
+  offre: Offre;
 }

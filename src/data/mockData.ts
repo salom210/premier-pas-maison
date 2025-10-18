@@ -323,4 +323,15 @@ export const mockProjectData: ProjectData = {
     last_open_step_id: "pre_projet",
     show_only_blockers: true,
   },
+  offre: {
+    scenarios: [
+      { id: "A", montant: null, clauses: [], delai_reponse: 72, commentaire: "" },
+      { id: "B", montant: null, clauses: [], delai_reponse: 72, commentaire: "" }
+    ],
+    scenario_actif: "A",
+    draft: "",
+    offre_acceptee: false,
+    market: { ref_price_m2: null, source: null },
+    projection: { taux_annuel: 0.02, frais_revente: 0.07, valeur_future: null, gain_net: null }
+  },
 };
