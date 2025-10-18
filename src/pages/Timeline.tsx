@@ -159,7 +159,8 @@ const Timeline = () => {
                     <div className="flex-1 pb-8">
                       <div className="flex items-center gap-2 mb-2">
                         <h3
-                          className={`font-medium ${
+                          onClick={() => navigate(`/step/${step.id}`)}
+                          className={`font-medium cursor-pointer hover:underline ${
                             step.status === "in_progress" ? "text-foreground" : "text-muted-foreground"
                           }`}
                         >
