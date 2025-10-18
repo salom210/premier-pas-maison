@@ -1046,11 +1046,11 @@ Cordialement,
                 {/* Analyse experte IA et Fiabilité */}
                 {localOffre.chatgpt_analysis && localOffre.fiabilite ? (
                   <>
-                    <FiabiliteGauge fiabilite={localOffre.fiabilite} />
                     <ChatGPTAnalysisCard 
                       analysis={localOffre.chatgpt_analysis}
                       prixDemande={localOffre.property_info.prix_demande}
                     />
+                    <FiabiliteGauge fiabilite={localOffre.fiabilite} />
                   </>
                 ) : (
                   <div className="p-4 rounded-lg border border-warning/30 bg-warning/5">
