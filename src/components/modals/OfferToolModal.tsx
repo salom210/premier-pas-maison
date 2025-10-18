@@ -56,9 +56,9 @@ export function OfferToolModal({
     setLocalOffre(offre);
   }, [offre]);
 
-  // Auto-switch to "Marché" tab after market analysis is loaded
+  // Auto-switch to "Marché" tab after market analysis is loaded (only from "bien" tab)
   useEffect(() => {
-    if (localOffre.market_analysis && activeTab !== "marche") {
+    if (localOffre.market_analysis && activeTab === "bien") {
       console.log('🔄 Basculement automatique vers onglet Marché');
       setActiveTab("marche");
     }
@@ -239,9 +239,6 @@ export function OfferToolModal({
         fiabilite: fiabiliteScore
       }));
 
-      // Générer automatiquement les scénarios
-      generateScenarios(marketData, localOffre.property_info);
-
       const source = marketData.source === 'IA' ? 'IA' : 'DVF';
       const analysisType = chatgptAnalysis ? `${source} + Analyse experte IA` : source;
       
@@ -290,10 +287,26 @@ export function OfferToolModal({
     const valeurBasse = marketData.valeur_estimee_basse;
     const prixDemande = propertyInfo.prix_demande;
 
+    // Déterminer le scénario recommandé
+    const ecartPourcentage = ((prixDemande - valeurMediane) / valeurMediane) * 100;
+    let scenarioRecommande: 'conservative' | 'balanced' | 'aggressive' = 'balanced';
+    let raisonRecommandation = '';
+
+    if (ecartPourcentage > 10) {
+      scenarioRecommande = 'aggressive';
+      raisonRecommandation = 'Le prix demandé est élevé par rapport au marché. Une négociation ferme est recommandée pour obtenir le meilleur prix.';
+    } else if (ecartPourcentage < -5) {
+      scenarioRecommande = 'conservative';
+      raisonRecommandation = 'Le prix demandé est attractif par rapport au marché. Sécurisez rapidement votre achat avec une offre compétitive.';
+    } else {
+      scenarioRecommande = 'balanced';
+      raisonRecommandation = 'Le prix demandé est aligné sur le marché. Un équilibre entre sécurité et économie est recommandé.';
+    }
+
     const scenarios: OffreScenario[] = [
       {
         id: "conservative",
-        nom: "Maximiser l'acceptation",
+        nom: "Sécuriser mon offre",
         strategie: "conservative",
         montant: Math.round(valeurMediane * 0.98),
         clauses: ["Obtention du prêt", "Diagnostics conformes"],
@@ -309,11 +322,13 @@ export function OfferToolModal({
         ),
         risque: "faible",
         plus_value_potentielle: "limitée",
-        justification: "Offre proche de la valeur de marché avec clauses rassurantes"
+        justification: "Cette approche privilégie la sécurité : votre offre a de grandes chances d'être acceptée rapidement, même si la marge de négociation est limitée.",
+        recommande: scenarioRecommande === 'conservative',
+        raison_recommandation: scenarioRecommande === 'conservative' ? raisonRecommandation : undefined
       },
       {
         id: "balanced",
-        nom: "Équilibré",
+        nom: "Optimiser le rapport risque/gain",
         strategie: "balanced",
         montant: Math.round(valeurMediane * 0.94),
         clauses: ["Obtention du prêt"],
@@ -329,11 +344,13 @@ export function OfferToolModal({
         ),
         risque: "modéré",
         plus_value_potentielle: "correcte",
-        justification: "Négociation raisonnable avec marge de discussion"
+        justification: "Un bon compromis entre sécurité et économie. Vous laissez une marge de négociation tout en restant compétitif face aux autres acheteurs potentiels.",
+        recommande: scenarioRecommande === 'balanced',
+        raison_recommandation: scenarioRecommande === 'balanced' ? raisonRecommandation : undefined
       },
       {
         id: "aggressive",
-        nom: "Maximiser la plus-value",
+        nom: "Maximiser ma plus-value",
         strategie: "aggressive",
         montant: Math.round(valeurBasse * 0.95),
         clauses: ["Obtention du prêt"],
@@ -351,7 +368,9 @@ export function OfferToolModal({
         ),
         risque: "élevé",
         plus_value_potentielle: "importante",
-        justification: "Offre basse mais défendable, nécessite contexte favorable"
+        justification: "Cette stratégie vise à obtenir le meilleur prix possible, mais elle comporte plus de risques : votre offre peut être refusée si d'autres acheteurs proposent plus.",
+        recommande: scenarioRecommande === 'aggressive',
+        raison_recommandation: scenarioRecommande === 'aggressive' ? raisonRecommandation : undefined
       }
     ];
 
@@ -360,6 +379,38 @@ export function OfferToolModal({
       scenarios,
       scenario_actif: "balanced"
     }));
+  };
+
+  // Handle scenario generation button click
+  const handleGenerateScenarios = () => {
+    if (!localOffre.market_analysis || !localOffre.property_info) {
+      toast({
+        title: "Informations manquantes",
+        description: "Veuillez d'abord compléter l'analyse de marché.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Réinitialiser l'état pour une "page blanche"
+    setLocalOffre(prev => ({
+      ...prev,
+      draft: "",
+      scenarios: [],
+      scenario_actif: "" as any
+    }));
+
+    // Générer immédiatement les nouveaux scénarios
+    generateScenarios(localOffre.market_analysis, localOffre.property_info);
+
+    // Basculer vers l'onglet scénarios
+    setActiveTab("scenarios");
+
+    // Toast de confirmation
+    toast({
+      title: "Scénarios générés",
+      description: "Nous vous proposons 3 options, dont 1 recommandée selon l'analyse de marché."
+    });
   };
 
   const updateScenario = (scenarioId: string, field: keyof OffreScenario, value: any) => {
@@ -995,7 +1046,7 @@ Cordialement,
                     Rafraîchir l'analyse
                   </Button>
                   <Button 
-                    onClick={() => setActiveTab("scenarios")}
+                    onClick={handleGenerateScenarios}
                     className="flex-1"
                   >
                     Générer des scénarios d'offre
@@ -1009,6 +1060,28 @@ Cordialement,
 
           {/* TAB 3: SCÉNARIOS */}
           <TabsContent value="scenarios" className="space-y-4 mt-4">
+            {localOffre.scenarios.some(s => s.recommande) && (
+              <Card className="bg-primary/5 border-primary/30">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Lightbulb className="h-5 w-5 text-primary" />
+                    Notre recommandation
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-foreground mb-2 font-medium">
+                    {localOffre.scenarios.find(s => s.recommande)?.nom}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {localOffre.scenarios.find(s => s.recommande)?.raison_recommandation}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-3 italic">
+                    Vous pouvez bien sûr choisir un autre scénario ci-dessous selon vos préférences.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="grid md:grid-cols-3 gap-4">
               {localOffre.scenarios.map((scenario) => (
                 <ScenarioCard

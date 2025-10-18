@@ -48,7 +48,14 @@ export function ScenarioCard({ scenario, isActive, onSelect }: ScenarioCardProps
             {getStrategieIcon(scenario.strategie)}
             {scenario.nom}
           </CardTitle>
-          {isActive && <Badge variant="default">Actif</Badge>}
+          <div className="flex gap-2">
+            {isActive && <Badge variant="default">Actif</Badge>}
+            {scenario.recommande && !isActive && (
+              <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/30">
+                Recommandé
+              </Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -84,6 +91,11 @@ export function ScenarioCard({ scenario, isActive, onSelect }: ScenarioCardProps
         <div className="pt-2 border-t border-border">
           <p className="text-xs text-muted-foreground mb-1">Stratégie</p>
           <p className="text-sm text-foreground">{scenario.justification}</p>
+          {scenario.recommande && scenario.raison_recommandation && (
+            <p className="text-xs text-primary mt-2 italic">
+              💡 {scenario.raison_recommandation}
+            </p>
+          )}
         </div>
 
         {scenario.clauses.length > 0 && (

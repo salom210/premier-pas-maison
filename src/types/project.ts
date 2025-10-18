@@ -154,6 +154,8 @@ export interface OffreScenario {
   risque: 'faible' | 'modéré' | 'élevé';
   plus_value_potentielle: string;
   justification: string;
+  recommande: boolean;
+  raison_recommandation?: string;
 }
 
 export interface Market {

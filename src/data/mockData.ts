@@ -340,7 +340,8 @@ export const mockProjectData: ProjectData = {
         probabilite_acceptation: 0,
         risque: "faible",
         plus_value_potentielle: "limitée",
-        justification: ""
+        justification: "",
+        recommande: false
       },
       { 
         id: "balanced", 
@@ -353,7 +354,8 @@ export const mockProjectData: ProjectData = {
         probabilite_acceptation: 0,
         risque: "modéré",
         plus_value_potentielle: "correcte",
-        justification: ""
+        justification: "",
+        recommande: false
       },
       { 
         id: "aggressive", 
@@ -366,7 +368,8 @@ export const mockProjectData: ProjectData = {
         probabilite_acceptation: 0,
         risque: "élevé",
         plus_value_potentielle: "importante",
-        justification: ""
+        justification: "",
+        recommande: false
       }
     ],
     scenario_actif: "balanced",
