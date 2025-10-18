@@ -121,55 +121,51 @@ const StepDetail = () => {
         </CardHeader>
         <CardContent className="space-y-3">
           {step.checklist.map((item) => (
-            <div key={item.id}>
-              <div className="flex items-start gap-3 p-3 rounded-lg border border-border bg-card/50">
-                <button
-                  onClick={() => handleToggleItem(item.id)}
-                  className="shrink-0 mt-0.5"
-                >
-                  {item.status === "done" ? (
-                    <CheckCircle2 className="h-5 w-5 text-primary" />
-                  ) : item.status === "in_progress" ? (
-                    <Circle className="h-5 w-5 text-warning-foreground fill-warning/30" />
-                  ) : (
-                    <Circle className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
+            <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card/50">
+              <button
+                onClick={() => handleToggleItem(item.id)}
+                className="shrink-0"
+              >
+                {item.status === "done" ? (
+                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                ) : item.status === "in_progress" ? (
+                  <Circle className="h-5 w-5 text-warning-foreground fill-warning/30" />
+                ) : (
+                  <Circle className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
+                )}
+              </button>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`text-sm ${
+                      item.status === "done"
+                        ? "text-muted-foreground line-through"
+                        : item.status === "in_progress"
+                        ? "text-foreground font-medium"
+                        : "text-foreground"
+                    }`}
+                  >
+                    {item.label}
+                  </span>
+                  {item.critical && item.status === "todo" && (
+                    <Badge variant="outline" className="text-xs bg-warning/10 border-warning/30">
+                      Critique
+                    </Badge>
                   )}
-                </button>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span
-                      className={`text-sm ${
-                        item.status === "done"
-                          ? "text-muted-foreground line-through"
-                          : item.status === "in_progress"
-                          ? "text-foreground font-medium"
-                          : "text-foreground"
-                      }`}
-                    >
-                      {item.label}
-                    </span>
-                    {item.critical && item.status === "todo" && (
-                      <Badge variant="outline" className="text-xs bg-warning/10 border-warning/30">
-                        Critique
-                      </Badge>
-                    )}
-                  </div>
                 </div>
               </div>
               
               {/* CTA pour l'outil d'offre sur l'item "Evaluer valeur cible" */}
               {step.id === "offre" && item.id === "chk_o_01" && (
-                <div className="ml-8 mt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowOfferModal(true)}
-                    className="text-xs"
-                  >
-                    <Target className="h-3 w-3 mr-2" />
-                    Outil d'aide à l'offre
-                  </Button>
-                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowOfferModal(true)}
+                  className="text-xs shrink-0"
+                >
+                  <Target className="h-3 w-3 mr-2" />
+                  Outil d'aide à l'offre
+                </Button>
               )}
             </div>
           ))}
