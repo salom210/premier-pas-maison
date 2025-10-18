@@ -324,11 +324,50 @@ export const mockProjectData: ProjectData = {
     show_only_blockers: true,
   },
   offre: {
+    property_info: null,
+    market_analysis: null,
     scenarios: [
-      { id: "A", montant: null, clauses: [], delai_reponse: 72, commentaire: "" },
-      { id: "B", montant: null, clauses: [], delai_reponse: 72, commentaire: "" }
+      { 
+        id: "conservative", 
+        nom: "Maximiser l'acceptation",
+        strategie: "conservative",
+        montant: null, 
+        clauses: [], 
+        delai_reponse: 72, 
+        commentaire: "",
+        probabilite_acceptation: 0,
+        risque: "faible",
+        plus_value_potentielle: "limitée",
+        justification: ""
+      },
+      { 
+        id: "balanced", 
+        nom: "Équilibré",
+        strategie: "balanced",
+        montant: null, 
+        clauses: [], 
+        delai_reponse: 72, 
+        commentaire: "",
+        probabilite_acceptation: 0,
+        risque: "modéré",
+        plus_value_potentielle: "correcte",
+        justification: ""
+      },
+      { 
+        id: "aggressive", 
+        nom: "Maximiser la plus-value",
+        strategie: "aggressive",
+        montant: null, 
+        clauses: [], 
+        delai_reponse: 72, 
+        commentaire: "",
+        probabilite_acceptation: 0,
+        risque: "élevé",
+        plus_value_potentielle: "importante",
+        justification: ""
+      }
     ],
-    scenario_actif: "A",
+    scenario_actif: "balanced",
     draft: "",
     offre_acceptee: false,
     market: { ref_price_m2: null, source: null },

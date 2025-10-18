@@ -94,12 +94,53 @@ export interface UIState {
   show_only_blockers: boolean;
 }
 
+export interface PropertyInfo {
+  adresse: string;
+  code_postal: string;
+  ville: string;
+  surface_habitable: number;
+  nombre_pieces: number;
+  nombre_chambres: number;
+  etage?: number;
+  ascenseur: boolean;
+  balcon_terrasse: boolean;
+  surface_exterieure?: number;
+  parking: boolean;
+  cave: boolean;
+  annee_construction?: number;
+  etat: 'excellent' | 'bon' | 'a-renover' | 'travaux-lourds';
+  prix_demande: number;
+  charges_mensuelles?: number;
+  taxe_fonciere?: number;
+  dpe?: string;
+}
+
+export interface MarketAnalysis {
+  prix_moyen_m2_ville: number;
+  prix_moyen_m2_quartier: number;
+  prix_min_m2: number;
+  prix_max_m2: number;
+  nombre_transactions_similaires: number;
+  valeur_estimee_basse: number;
+  valeur_estimee_haute: number;
+  valeur_estimee_mediane: number;
+  ecart_prix_demande_vs_marche: number;
+  conclusion: 'survalorise' | 'correct' | 'bonne-affaire';
+  derniere_maj: string;
+}
+
 export interface OffreScenario {
   id: string;
+  nom: string;
+  strategie: 'conservative' | 'balanced' | 'aggressive';
   montant: number | null;
   clauses: string[];
   delai_reponse: number;
   commentaire: string;
+  probabilite_acceptation: number;
+  risque: 'faible' | 'modéré' | 'élevé';
+  plus_value_potentielle: string;
+  justification: string;
 }
 
 export interface Market {
@@ -115,6 +156,8 @@ export interface Projection {
 }
 
 export interface Offre {
+  property_info: PropertyInfo | null;
+  market_analysis: MarketAnalysis | null;
   scenarios: OffreScenario[];
   scenario_actif: string;
   draft: string;
