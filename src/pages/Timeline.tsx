@@ -1,44 +1,39 @@
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Circle, AlertTriangle, XCircle } from "lucide-react";
-
-interface Step {
-  id: string;
-  title: string;
-  status: "completed" | "current" | "upcoming" | "blocked";
-  pointOfNoReturn?: boolean;
-  missingItems?: string[];
-}
-
-const mockSteps: Step[] = [
-  {
-    id: "1",
-    title: "Définir votre projet",
-    status: "completed",
-  },
-  {
-    id: "2",
-    title: "Obtenir un accord de principe bancaire",
-    status: "current",
-    missingItems: ["Justificatifs de revenus (3 derniers mois)", "Avis d'imposition N-1"],
-  },
-  {
-    id: "3",
-    title: "Rechercher votre bien",
-    status: "upcoming",
-  },
-  {
-    id: "4",
-    title: "Faire une offre d'achat",
-    status: "upcoming",
-    pointOfNoReturn: true,
-  },
-];
+import { CheckCircle2, Circle, AlertTriangle } from "lucide-react";
+import { mockProjectData } from "@/data/mockData";
+import { StepChecklist } from "@/components/StepChecklist";
+import { MissingInfoList } from "@/components/MissingInfoList";
+import { BlockersList } from "@/components/BlockersList";
+import type { Step } from "@/types/project";
 
 const Timeline = () => {
-  const currentStep = mockSteps.find((s) => s.status === "current");
-  const hasBlockers = currentStep?.missingItems && currentStep.missingItems.length > 0;
+  const [projectData] = useState(mockProjectData);
+  const currentStep = projectData.steps.find((s) => s.status === "in_progress");
+  
+  const hasBlockers = currentStep && (
+    currentStep.blockers.length > 0 ||
+    currentStep.missing_info.length > 0 ||
+    currentStep.checklist.some((c) => c.critical && c.status === "todo")
+  );
+
+  const getNonRetourForStep = (stepId: string) => {
+    return projectData.rules.non_retours.find((nr) => nr.step === stepId);
+  };
+
+  const getStatusIcon = (step: Step) => {
+    if (step.status === "done") return CheckCircle2;
+    if (step.status === "in_progress") return Circle;
+    return Circle;
+  };
+
+  const getStatusColor = (step: Step) => {
+    if (step.status === "done") return "text-primary";
+    if (step.status === "in_progress") return "text-primary";
+    return "text-muted-foreground";
+  };
 
   return (
     <div className="max-w-4xl">
@@ -58,7 +53,7 @@ const Timeline = () => {
             <div className="flex items-start justify-between">
               <div>
                 <CardTitle className="text-xl">Étape en cours</CardTitle>
-                <CardDescription className="mt-1">{currentStep.title}</CardDescription>
+                <CardDescription className="mt-1">{currentStep.label}</CardDescription>
               </div>
               {hasBlockers && (
                 <Badge variant="outline" className="bg-warning/10 text-warning-foreground border-warning/30">
@@ -68,36 +63,41 @@ const Timeline = () => {
               )}
             </div>
           </CardHeader>
-          <CardContent>
-            {currentStep.missingItems && currentStep.missingItems.length > 0 && (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Pour avancer sereinement, il reste {currentStep.missingItems.length} élément
-                  {currentStep.missingItems.length > 1 ? "s" : ""} à vérifier.
-                </p>
-                <ul className="space-y-2">
-                  {currentStep.missingItems.map((item, idx) => (
-                    <li key={idx} className="flex items-start gap-2 text-sm">
-                      <Circle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button className="mt-4 w-full sm:w-auto">
-                  Ajouter ces documents
-                </Button>
-              </div>
-            )}
-            {!hasBlockers && (
-              <div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Cette étape est prête. Vous pouvez continuer.
-                </p>
-                <Button className="w-full sm:w-auto">
-                  Passer à l'étape suivante
-                </Button>
-              </div>
-            )}
+          <CardContent className="space-y-6">
+            {/* Blockers */}
+            <BlockersList blockers={currentStep.blockers} />
+
+            {/* Missing Info */}
+            <MissingInfoList 
+              items={currentStep.missing_info} 
+              catalogs={projectData.catalogs}
+            />
+
+            {/* Checklist */}
+            <StepChecklist items={currentStep.checklist} />
+
+            {/* Next action */}
+            <div className="pt-4 border-t border-border">
+              {currentStep.next_allowed ? (
+                <div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Cette étape est prête. Vous pouvez continuer.
+                  </p>
+                  <Button className="w-full sm:w-auto">
+                    Passer à l'étape suivante
+                  </Button>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Pour avancer sereinement, veuillez compléter les éléments ci-dessus.
+                  </p>
+                  <Button disabled className="w-full sm:w-auto">
+                    Étape suivante indisponible
+                  </Button>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -109,34 +109,21 @@ const Timeline = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            {mockSteps.map((step, idx) => {
-              const isLast = idx === mockSteps.length - 1;
-              const StatusIcon =
-                step.status === "completed"
-                  ? CheckCircle2
-                  : step.status === "blocked"
-                  ? XCircle
-                  : Circle;
+            {projectData.steps.map((step, idx) => {
+              const isLast = idx === projectData.steps.length - 1;
+              const StatusIcon = getStatusIcon(step);
+              const statusColor = getStatusColor(step);
+              const nonRetour = getNonRetourForStep(step.id);
 
               return (
                 <div key={step.id} className="relative">
                   <div className="flex items-start gap-4">
                     <div className="relative flex flex-col items-center">
-                      <StatusIcon
-                        className={`h-6 w-6 shrink-0 ${
-                          step.status === "completed"
-                            ? "text-primary"
-                            : step.status === "current"
-                            ? "text-primary"
-                            : step.status === "blocked"
-                            ? "text-destructive"
-                            : "text-muted-foreground"
-                        }`}
-                      />
+                      <StatusIcon className={`h-6 w-6 shrink-0 ${statusColor}`} />
                       {!isLast && (
                         <div
                           className={`w-0.5 h-12 mt-2 ${
-                            step.status === "completed" ? "bg-primary/30" : "bg-border"
+                            step.status === "done" ? "bg-primary/30" : "bg-border"
                           }`}
                         />
                       )}
@@ -145,23 +132,24 @@ const Timeline = () => {
                       <div className="flex items-center gap-2 mb-1">
                         <h3
                           className={`font-medium ${
-                            step.status === "current" ? "text-foreground" : "text-muted-foreground"
+                            step.status === "in_progress" ? "text-foreground" : "text-muted-foreground"
                           }`}
                         >
-                          {step.title}
+                          {step.label}
                         </h3>
-                        {step.pointOfNoReturn && (
+                        {nonRetour && (
                           <Badge variant="outline" className="text-xs">
                             ⛔ Point de non‑retour
                           </Badge>
                         )}
                       </div>
-                      {step.status === "current" && step.missingItems && (
+                      {step.status === "in_progress" && (
                         <p className="text-sm text-muted-foreground">
-                          {step.missingItems.length} élément{step.missingItems.length > 1 ? "s" : ""} requis
+                          {step.checklist.filter((c) => c.status === "todo").length} élément
+                          {step.checklist.filter((c) => c.status === "todo").length > 1 ? "s" : ""} en attente
                         </p>
                       )}
-                      {step.status === "completed" && (
+                      {step.status === "done" && (
                         <p className="text-sm text-muted-foreground">Terminé</p>
                       )}
                     </div>
