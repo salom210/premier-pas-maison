@@ -48,7 +48,7 @@ export function ChatGPTAnalysisCard({ analysis, prixDemande }: ChatGPTAnalysisCa
             </Badge>
             <Badge variant="secondary" className="gap-1 text-xs">
               <Cpu className="h-3 w-3" />
-              GPT-5-mini
+              Gemini 2.5 Flash
             </Badge>
           </div>
         </div>
