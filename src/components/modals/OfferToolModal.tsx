@@ -719,13 +719,13 @@ Cordialement,
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="charges">Charges mensuelles (€)</Label>
+                    <Label htmlFor="charges">Charges trimestrielles (€)</Label>
                     <Input
                       id="charges"
                       type="number"
-                      value={localOffre.property_info?.charges_mensuelles || ""}
-                      onChange={(e) => updatePropertyInfo("charges_mensuelles", parseFloat(e.target.value) || undefined)}
-                      placeholder="150"
+                      value={localOffre.property_info?.charges_trimestrielles || ""}
+                      onChange={(e) => updatePropertyInfo("charges_trimestrielles", parseFloat(e.target.value) || undefined)}
+                      placeholder="450"
                     />
                   </div>
                   <div>

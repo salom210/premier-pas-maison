@@ -111,7 +111,7 @@ export interface PropertyInfo {
   annee_construction?: number;
   etat: 'excellent' | 'bon' | 'a-renover' | 'travaux-lourds';
   prix_demande: number;
-  charges_mensuelles?: number;
+  charges_trimestrielles?: number;
   taxe_fonciere?: number;
   dpe?: string;
 }
