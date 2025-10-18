@@ -11,12 +11,16 @@ export function MarketPositionChart({
   valeurHaute,
   valeurMediane
 }: MarketPositionChartProps) {
-  // Calcul de la plage totale
-  const plageTotal = valeurHaute - valeurBasse;
+  // Déterminer les bornes dynamiques incluant le prix demandé
+  const valeurMin = Math.min(valeurBasse, prixDemande);
+  const valeurMax = Math.max(valeurHaute, prixDemande);
+  const plageTotal = valeurMax - valeurMin;
   
-  // Calcul des positions en pourcentage
-  const positionMediane = ((valeurMediane - valeurBasse) / plageTotal) * 100;
-  const positionPrixDemande = ((prixDemande - valeurBasse) / plageTotal) * 100;
+  // Recalculer toutes les positions par rapport aux nouvelles bornes
+  const positionValeurBasse = ((valeurBasse - valeurMin) / plageTotal) * 100;
+  const positionValeurHaute = ((valeurHaute - valeurMin) / plageTotal) * 100;
+  const positionMediane = ((valeurMediane - valeurMin) / plageTotal) * 100;
+  const positionPrixDemande = ((prixDemande - valeurMin) / plageTotal) * 100;
   
   // Calcul des zones basées sur la plage totale (±5% autour de la médiane)
   const margeZoneVerte = plageTotal * 0.05; // 5% de la plage totale
@@ -24,9 +28,9 @@ export function MarketPositionChart({
   const finZoneVerte = valeurMediane + margeZoneVerte;
   
   // Calcul des largeurs brutes en pourcentage
-  let largeurZoneBleue = ((debutZoneVerte - valeurBasse) / plageTotal) * 100;
+  let largeurZoneBleue = ((debutZoneVerte - valeurMin) / plageTotal) * 100;
   let largeurZoneVerte = ((finZoneVerte - debutZoneVerte) / plageTotal) * 100;
-  let largeurZoneRouge = ((valeurHaute - finZoneVerte) / plageTotal) * 100;
+  let largeurZoneRouge = ((valeurMax - finZoneVerte) / plageTotal) * 100;
   
   // Garantir une largeur minimale de 5% pour chaque zone
   const minWidth = 5;
@@ -49,20 +53,29 @@ export function MarketPositionChart({
           <div className="relative h-32">
             {/* Barre horizontale avec zones colorées */}
             <div className="absolute left-8 right-8 h-6 top-14 rounded-full overflow-hidden flex shadow-lg">
-              {/* Zone basse (bleu) */}
+              {/* Zone basse (bleu pastel gradient) */}
               <div 
-                className="bg-blue-500 transition-all duration-300"
-                style={{ width: `${largeurZoneBleue}%` }}
+                className="transition-all duration-300"
+                style={{ 
+                  width: `${largeurZoneBleue}%`,
+                  background: 'linear-gradient(135deg, hsl(210, 85%, 80%), hsl(220, 80%, 85%))'
+                }}
               />
-              {/* Zone raisonnable (vert) */}
+              {/* Zone raisonnable (vert pastel gradient) */}
               <div 
-                className="bg-green-500 transition-all duration-300"
-                style={{ width: `${largeurZoneVerte}%` }}
+                className="transition-all duration-300"
+                style={{ 
+                  width: `${largeurZoneVerte}%`,
+                  background: 'linear-gradient(135deg, hsl(140, 65%, 75%), hsl(150, 60%, 80%))'
+                }}
               />
-              {/* Zone survalorisée (rouge) */}
+              {/* Zone survalorisée (rouge/rose pastel gradient) */}
               <div 
-                className="bg-red-500 transition-all duration-300"
-                style={{ width: `${largeurZoneRouge}%` }}
+                className="transition-all duration-300"
+                style={{ 
+                  width: `${largeurZoneRouge}%`,
+                  background: 'linear-gradient(135deg, hsl(350, 70%, 80%), hsl(10, 75%, 85%))'
+                }}
               />
             </div>
             
@@ -80,49 +93,33 @@ export function MarketPositionChart({
               </div>
             </div>
             
-            {/* Marqueur valeur basse */}
-            <div 
-              className="absolute bottom-2 left-8 -translate-x-1/2 transition-all duration-300"
-            >
-              <div className="flex flex-col items-center">
-                <div className="w-0.5 h-4 bg-muted-foreground/50 rounded-full" />
-                <div className="text-xs text-muted-foreground mt-1 whitespace-nowrap font-medium">
-                  Min
-                </div>
-                <div className="text-xs text-foreground font-semibold mt-0.5">
-                  {(valeurBasse / 1000).toFixed(0)}k€
-                </div>
+            {/* Valeur Min - gauche de la jauge */}
+            <div className="absolute bottom-2 left-8 -translate-x-1/2">
+              <div className="text-xs text-muted-foreground font-semibold">
+                {(valeurBasse / 1000).toFixed(0)}k€
               </div>
             </div>
             
-            {/* Marqueur valeur médiane */}
+            {/* Curseur valeur médiane */}
             <div 
               className="absolute bottom-2 -translate-x-1/2 transition-all duration-300"
               style={{ left: `calc(2rem + (100% - 4rem) * ${positionMediane / 100})` }}
             >
               <div className="flex flex-col items-center">
-                <div className="w-0.5 h-4 bg-muted-foreground/50 rounded-full" />
+                <div className="w-0.5 h-4 bg-muted-foreground rounded-full" />
                 <div className="text-xs text-muted-foreground mt-1 whitespace-nowrap font-medium">
                   Médiane
                 </div>
-                <div className="text-xs text-foreground font-semibold mt-0.5">
+                <div className="text-xs text-muted-foreground font-semibold mt-0.5">
                   {(valeurMediane / 1000).toFixed(0)}k€
                 </div>
               </div>
             </div>
             
-            {/* Marqueur valeur haute */}
-            <div 
-              className="absolute bottom-2 right-8 -translate-x-1/2 transition-all duration-300"
-            >
-              <div className="flex flex-col items-center">
-                <div className="w-0.5 h-4 bg-muted-foreground/50 rounded-full" />
-                <div className="text-xs text-muted-foreground mt-1 whitespace-nowrap font-medium">
-                  Max
-                </div>
-                <div className="text-xs text-foreground font-semibold mt-0.5">
-                  {(valeurHaute / 1000).toFixed(0)}k€
-                </div>
+            {/* Valeur Max - droite de la jauge */}
+            <div className="absolute bottom-2 right-8 translate-x-1/2">
+              <div className="text-xs text-muted-foreground font-semibold">
+                {(valeurHaute / 1000).toFixed(0)}k€
               </div>
             </div>
           </div>
@@ -132,16 +129,16 @@ export function MarketPositionChart({
       {/* Légende compacte */}
       <div className="flex flex-wrap justify-center gap-4 text-xs border-t pt-4">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-blue-500" />
-          <span className="text-foreground">Fourchette basse</span>
+          <div className="w-3 h-3 rounded-full" style={{ background: 'linear-gradient(135deg, hsl(210, 85%, 80%), hsl(220, 80%, 85%))' }} />
+          <span className="text-muted-foreground">Fourchette basse</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-green-500" />
-          <span className="text-foreground">Zone raisonnable</span>
+          <div className="w-3 h-3 rounded-full" style={{ background: 'linear-gradient(135deg, hsl(140, 65%, 75%), hsl(150, 60%, 80%))' }} />
+          <span className="text-muted-foreground">Zone raisonnable</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-red-500" />
-          <span className="text-foreground">Survalorisé</span>
+          <div className="w-3 h-3 rounded-full" style={{ background: 'linear-gradient(135deg, hsl(350, 70%, 80%), hsl(10, 75%, 85%))' }} />
+          <span className="text-muted-foreground">Survalorisé</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-primary" />
