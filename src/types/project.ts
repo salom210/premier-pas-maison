@@ -139,7 +139,27 @@ export interface MarketAnalysis {
   conclusion: 'survalorise' | 'correct' | 'bonne-affaire';
   derniere_maj: string;
   source?: 'DVF' | 'IA';
+  dataSource?: string;
   transactions_similaires?: SimilarProperty[];
+  // Nouvelles statistiques par nombre de pièces
+  statistiques_pieces?: {
+    cible_pieces: number;
+    total_transactions: number;
+    correspondance_exacte: number;
+    correspondance_proche: number;
+    groupes_pieces: Array<{
+      nombre_pieces: number;
+      nombre_transactions: number;
+      prix_moyen_m2: number;
+      prix_min_m2: number;
+      prix_max_m2: number;
+      ecart_avec_cible: number;
+      priorite: 'exacte' | 'proche' | 'elargie' | 'autre';
+    }>;
+  };
+  // Nouveaux champs pour la fiabilité et le prix exact
+  fiabilite_estimation?: 'forte' | 'moyenne' | 'faible';
+  prix_moyen_m2_exact?: number | null;
 }
 
 export interface OffreScenario {

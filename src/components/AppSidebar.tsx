@@ -1,4 +1,4 @@
-import { Home, BookOpen, Settings } from "lucide-react";
+import { Home, Settings, TestTube, FileText } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import {
   Sidebar,
@@ -13,7 +13,8 @@ import {
 
 const items = [
   { title: "Parcours", url: "/", icon: Home },
-  { title: "Journal", url: "/journal", icon: BookOpen },
+  { title: "Outil d'offre", url: "/offre-tool", icon: FileText },
+  { title: "Tests DVF", url: "/tests", icon: TestTube },
   { title: "Paramètres", url: "/settings", icon: Settings },
 ];
 

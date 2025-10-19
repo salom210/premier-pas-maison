@@ -1,12 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { MarketAnalysis } from "@/types/project";
+import { analyzeDVFMarket } from "@/lib/dvf/marketAnalysisService";
+import { loadDVFData } from "@/lib/dvf/dvfLoader";
 
 export async function fetchMarketData(
   codePostal: string,
   ville: string,
   surface: number,
   nombrePieces: number,
-  useAI = true, // Toujours utiliser l'IA maintenant
+  useAI = true,
   additionalInfo?: {
     etage?: number;
     dernier_etage?: boolean;
@@ -16,7 +18,35 @@ export async function fetchMarketData(
     prix_demande?: number;
   }
 ): Promise<MarketAnalysis | null> {
-  // Utiliser exclusivement l'IA pour l'estimation de marché
+  // Essayer d'abord les données DVF locales pour le département 93
+  const departement = codePostal.substring(0, 2);
+  if (departement === '93') {
+    try {
+      console.log('Tentative de chargement des données DVF locales pour le département 93');
+      const dvfData = await loadDVFData();
+      
+      if (dvfData && dvfData.length > 0) {
+        console.log(`Données DVF chargées: ${dvfData.length} transactions`);
+        const analysis = analyzeDVFMarket(dvfData, {
+          codePostal,
+          ville,
+          surface,
+          nombrePieces,
+          additionalInfo
+        });
+        
+        if (analysis) {
+          console.log('Analyse DVF réussie, utilisation des données locales');
+          return analysis;
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des données DVF:', error);
+    }
+  }
+  
+  // Fallback vers l'IA si pas de données DVF ou département différent
+  console.log('Fallback vers l\'analyse IA');
   return await fetchAIMarketData(codePostal, ville, surface, nombrePieces, additionalInfo);
 }
 
@@ -64,6 +94,9 @@ async function fetchAIMarketData(
       distance_km: t.distance_km
     }));
 
+    // Générer des statistiques par nombre de pièces même pour l'IA
+    const statistiquesPieces = generateBasicRoomStatistics(nombrePieces, prixMoyenM2, data.nombre_transactions || 0);
+
     const normalized: MarketAnalysis = {
       prix_moyen_m2_quartier: prixMoyenM2,
       prix_moyen_m2_ville: data.prix_moyen_m2_ville || prixMoyenM2,
@@ -77,7 +110,8 @@ async function fetchAIMarketData(
       conclusion: data.conclusion || 'correct',
       source: 'IA',
       derniere_maj: new Date().toISOString(),
-      transactions_similaires: transactionsSimilaires
+      transactions_similaires: transactionsSimilaires,
+      statistiques_pieces: statistiquesPieces
     };
 
     return normalized;
@@ -149,35 +183,81 @@ export function calculateFiabilite(
   const criteres: any = {};
   const recommandations: string[] = [];
 
-  // 1. Ancienneté des données (30 points max)
-  let scoreAnciennete = 10;
-  let moisDepuisMAJ = 12;
-  let detailAnciennete = 'Données non datées';
+  // 1. Fraîcheur des données (30 points max)
+  let scoreAnciennete = 5;
+  let detailAnciennete = 'Source de données inconnue';
   
-  if (chatgptAnalysis.date_donnees_marche) {
-    const [month, year] = chatgptAnalysis.date_donnees_marche.split('/');
-    const dateMAJ = new Date(parseInt('20' + year), parseInt(month) - 1);
-    const now = new Date();
-    moisDepuisMAJ = Math.floor((now.getTime() - dateMAJ.getTime()) / (1000 * 60 * 60 * 24 * 30));
-    
-    if (moisDepuisMAJ < 6) {
+  // Priorité aux données DVF réelles
+  if (marketAnalysis?.source === 'DVF') {
+    if (marketAnalysis.dataSource === '2025') {
       scoreAnciennete = 30;
-      detailAnciennete = `Données récentes (${moisDepuisMAJ} mois)`;
-    } else if (moisDepuisMAJ < 12) {
-      scoreAnciennete = 20;
-      detailAnciennete = `Données moyennes (${moisDepuisMAJ} mois)`;
-      recommandations.push('Les données ont entre 6 et 12 mois. Une actualisation serait bénéfique.');
+      detailAnciennete = 'Données officielles DVF 2025 - Prix de vente réels les plus récents (source la plus fiable)';
+    } else if (marketAnalysis.dataSource === '2024') {
+      scoreAnciennete = 25;
+      detailAnciennete = 'Données officielles DVF 2024 - Prix de vente réels récents (très fiable)';
+      recommandations.push('Données DVF 2024 disponibles. Les données 2025 seraient plus récentes.');
+    } else if (marketAnalysis.dataSource?.includes('2024') && marketAnalysis.dataSource?.includes('2025')) {
+      scoreAnciennete = 28;
+      detailAnciennete = 'Données officielles DVF 2024-2025 - Prix de vente réels combinés (très fiable)';
     } else {
-      scoreAnciennete = 10;
-      detailAnciennete = `Données anciennes (${moisDepuisMAJ} mois)`;
-      recommandations.push('Les données ont plus d\'un an. Recommandé de vérifier les prix actuels du marché.');
+      scoreAnciennete = 20;
+      detailAnciennete = 'Données officielles DVF - Prix de vente réels (fiable)';
     }
+  } else if (marketAnalysis?.source === 'IA') {
+    // Données générées par l'IA
+    scoreAnciennete = 10;
+    detailAnciennete = 'Estimation IA - Calculée par intelligence artificielle (moins fiable que les données réelles)';
+    recommandations.push('Données estimées par IA. Les données DVF réelles seraient plus fiables.');
+  } else if (chatgptAnalysis?.date_donnees_marche) {
+    // Fallback sur l'ancien système de date
+    try {
+      const [month, year] = chatgptAnalysis.date_donnees_marche.split('/');
+      const fullYear = parseInt('20' + year);
+      const monthNum = parseInt(month);
+      
+      // Validation des données de date
+      if (isNaN(fullYear) || isNaN(monthNum) || monthNum < 1 || monthNum > 12 || fullYear < 2020 || fullYear > 2030) {
+        throw new Error('Date invalide');
+      }
+      
+      const dateMAJ = new Date(fullYear, monthNum - 1);
+      const now = new Date();
+      const moisDepuisMAJ = Math.floor((now.getTime() - dateMAJ.getTime()) / (1000 * 60 * 60 * 24 * 30));
+      
+      // Validation du résultat du calcul
+      if (isNaN(moisDepuisMAJ) || moisDepuisMAJ < 0 || moisDepuisMAJ > 120) {
+        throw new Error('Calcul de date invalide');
+      }
+      
+      if (moisDepuisMAJ < 6) {
+        scoreAnciennete = 20;
+        detailAnciennete = `Données récentes - Mises à jour il y a ${moisDepuisMAJ} mois (source non spécifiée)`;
+      } else if (moisDepuisMAJ < 12) {
+        scoreAnciennete = 15;
+        detailAnciennete = `Données moyennes - Mises à jour il y a ${moisDepuisMAJ} mois (source non spécifiée)`;
+        recommandations.push('Les données ont entre 6 et 12 mois. Une actualisation serait bénéfique.');
+      } else {
+        scoreAnciennete = 10;
+        detailAnciennete = `Données anciennes - Mises à jour il y a ${moisDepuisMAJ} mois (source non spécifiée)`;
+        recommandations.push('Les données ont plus d\'un an. Recommandé de vérifier les prix actuels du marché.');
+      }
+    } catch (error) {
+      // En cas d'erreur de parsing de date, utiliser un score par défaut
+      console.warn('Erreur de parsing de date:', error);
+      scoreAnciennete = 5;
+      detailAnciennete = 'Date de mise à jour invalide - Impossible de calculer la fraîcheur des données';
+      recommandations.push('Format de date incorrect. Impossible de déterminer la fraîcheur des données.');
+    }
+  } else {
+    scoreAnciennete = 5;
+    detailAnciennete = 'Source inconnue - Impossible de vérifier la fraîcheur des données';
+    recommandations.push('Aucune information sur la source des données. Fiabilité limitée.');
   }
   
   criteres.anciennete_donnees = {
     score: scoreAnciennete,
     detail: detailAnciennete,
-    warning: moisDepuisMAJ > 6
+    warning: scoreAnciennete < 20
   };
   score += scoreAnciennete;
 
@@ -283,4 +363,92 @@ export function calculerProbabiliteAcceptation(
   else if (contexte_marche === 'vendeur') probabilite -= 10;
 
   return Math.max(0, Math.min(100, Math.round(probabilite)));
+}
+
+export async function generateOfferTemplate(
+  propertyInfo: PropertyInfo,
+  marketAnalysis: MarketAnalysis,
+  chatgptAnalysis: ChatGPTAnalysis,
+  scenario: OffreScenario
+): Promise<string> {
+  try {
+    const { data, error } = await supabase.functions.invoke('chatgpt-market-analysis', {
+      body: {
+        type: 'generate_offer_template',
+        propertyInfo,
+        marketAnalysis,
+        chatgptAnalysis,
+        scenario
+      }
+    });
+
+    if (error) {
+      console.error('Error generating offer template:', error);
+      
+      if (error.message?.includes('rate limit')) {
+        throw new Error('RATE_LIMIT');
+      } else if (error.message?.includes('credits')) {
+        throw new Error('INSUFFICIENT_CREDITS');
+      } else {
+        throw new Error(error.message || 'Failed to generate offer template');
+      }
+    }
+
+    return data?.template || 'Erreur lors de la génération du modèle d\'offre.';
+  } catch (error) {
+    console.error('Error in generateOfferTemplate:', error);
+    throw error;
+  }
+}
+
+// Fonction pour générer des statistiques par nombre de pièces basiques pour l'IA
+function generateBasicRoomStatistics(
+  nombrePieces: number,
+  prixMoyenM2: number,
+  nombreTransactions: number
+) {
+  // Générer des groupes de pièces autour du nombre cible
+  const groupesPieces = [];
+  
+  // Groupe exact
+  groupesPieces.push({
+    nombre_pieces: nombrePieces,
+    nombre_transactions: Math.max(1, Math.floor(nombreTransactions * 0.4)),
+    prix_moyen_m2: prixMoyenM2,
+    prix_min_m2: Math.round(prixMoyenM2 * 0.85),
+    prix_max_m2: Math.round(prixMoyenM2 * 1.15),
+    ecart_avec_cible: 0,
+    priorite: 'exacte' as const
+  });
+  
+  // Groupe proche (±1 pièce)
+  if (nombrePieces > 1) {
+    groupesPieces.push({
+      nombre_pieces: nombrePieces - 1,
+      nombre_transactions: Math.max(1, Math.floor(nombreTransactions * 0.3)),
+      prix_moyen_m2: Math.round(prixMoyenM2 * 0.95),
+      prix_min_m2: Math.round(prixMoyenM2 * 0.8),
+      prix_max_m2: Math.round(prixMoyenM2 * 1.1),
+      ecart_avec_cible: 1,
+      priorite: 'proche' as const
+    });
+  }
+  
+  groupesPieces.push({
+    nombre_pieces: nombrePieces + 1,
+    nombre_transactions: Math.max(1, Math.floor(nombreTransactions * 0.3)),
+    prix_moyen_m2: Math.round(prixMoyenM2 * 1.05),
+    prix_min_m2: Math.round(prixMoyenM2 * 0.9),
+    prix_max_m2: Math.round(prixMoyenM2 * 1.2),
+    ecart_avec_cible: 1,
+    priorite: 'proche' as const
+  });
+  
+  return {
+    cible_pieces: nombrePieces,
+    total_transactions: nombreTransactions,
+    correspondance_exacte: Math.max(1, Math.floor(nombreTransactions * 0.4)),
+    correspondance_proche: Math.max(1, Math.floor(nombreTransactions * 0.6)),
+    groupes_pieces: groupesPieces
+  };
 }

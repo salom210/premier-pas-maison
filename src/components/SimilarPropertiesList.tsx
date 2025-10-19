@@ -1,6 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Calendar, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MapPin, Calendar, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp } from "lucide-react";
+import { useState } from "react";
 import type { SimilarProperty } from "@/types/project";
 
 interface SimilarPropertiesListProps {
@@ -9,6 +11,8 @@ interface SimilarPropertiesListProps {
 }
 
 export function SimilarPropertiesList({ properties, currentPropertyPrice }: SimilarPropertiesListProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
   if (!properties || properties.length === 0) {
     return null;
   }
@@ -30,12 +34,30 @@ export function SimilarPropertiesList({ properties, currentPropertyPrice }: Simi
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <MapPin className="h-4 w-4" />
-          Biens similaires vendus récemment
+        <CardTitle className="text-base flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4" />
+            Biens similaires vendus récemment
+            <Badge variant="secondary" className="ml-2">
+              {properties.length}
+            </Badge>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="h-8 w-8 p-0"
+          >
+            {isExpanded ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </Button>
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      {isExpanded && (
+        <CardContent>
         <div className="space-y-3">
           {properties.map((property, index) => {
             const prixM2 = Math.round(property.prix_vente / property.surface);
@@ -97,7 +119,8 @@ export function SimilarPropertiesList({ properties, currentPropertyPrice }: Simi
             Les variations de prix peuvent s'expliquer par l'étage, l'état, ou les équipements.
           </p>
         )}
-      </CardContent>
+        </CardContent>
+      )}
     </Card>
   );
 }

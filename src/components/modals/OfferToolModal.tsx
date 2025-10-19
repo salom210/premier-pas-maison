@@ -935,6 +935,7 @@ Cordialement,
                       valeurBasse={localOffre.market_analysis.valeur_estimee_basse}
                       valeurHaute={localOffre.market_analysis.valeur_estimee_haute}
                       valeurMediane={localOffre.market_analysis.valeur_estimee_mediane}
+                      surface={localOffre.property_info.surface_habitable}
                     />
                   </CardContent>
                 </Card>
@@ -1026,6 +1027,95 @@ Cordialement,
                       </div>
                     </div>
                   </div>
+                )}
+
+                {/* Nouvelles statistiques par nombre de pièces */}
+                {localOffre.market_analysis.statistiques_pieces && (
+                  <Card className="bg-blue-50/50 border-blue-200">
+                    <CardHeader>
+                      <CardTitle className="text-sm text-blue-800 flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4" />
+                        Analyse par nombre de pièces
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {/* Résumé des correspondances */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-blue-800">
+                              {localOffre.market_analysis.statistiques_pieces.correspondance_exacte}
+                            </div>
+                            <div className="text-xs text-blue-600">Correspondance exacte</div>
+                            <div className="text-xs text-gray-500">
+                              {localOffre.market_analysis.statistiques_pieces.cible_pieces} pièces
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-blue-700">
+                              {localOffre.market_analysis.statistiques_pieces.correspondance_proche}
+                            </div>
+                            <div className="text-xs text-blue-600">Correspondance proche</div>
+                            <div className="text-xs text-gray-500">±1 pièce</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-blue-600">
+                              {localOffre.market_analysis.statistiques_pieces.total_transactions}
+                            </div>
+                            <div className="text-xs text-blue-600">Total transactions</div>
+                            <div className="text-xs text-gray-500">Analysées</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-blue-500">
+                              {localOffre.market_analysis.statistiques_pieces.groupes_pieces.length}
+                            </div>
+                            <div className="text-xs text-blue-600">Groupes de pièces</div>
+                            <div className="text-xs text-gray-500">Différents</div>
+                          </div>
+                        </div>
+
+                        {/* Détail par nombre de pièces */}
+                        {localOffre.market_analysis.statistiques_pieces.groupes_pieces.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-medium text-blue-800 mb-3">
+                              Prix moyen par nombre de pièces
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                              {localOffre.market_analysis.statistiques_pieces.groupes_pieces.slice(0, 6).map((groupe, idx) => (
+                                <div key={idx} className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-blue-800">{groupe.nombre_pieces} pièces</span>
+                                    <Badge 
+                                      variant={
+                                        groupe.priorite === 'exacte' ? 'default' : 
+                                        groupe.priorite === 'proche' ? 'secondary' : 'outline'
+                                      }
+                                      className="text-xs"
+                                    >
+                                      {groupe.priorite}
+                                    </Badge>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="font-semibold text-blue-800">
+                                      {Math.round(groupe.prix_moyen_m2).toLocaleString('fr-FR')}€/m²
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {groupe.nombre_transactions} transaction{groupe.nombre_transactions > 1 ? 's' : ''}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            {localOffre.market_analysis.statistiques_pieces.groupes_pieces.length > 6 && (
+                              <p className="text-xs text-gray-500 mt-2 text-center">
+                                +{localOffre.market_analysis.statistiques_pieces.groupes_pieces.length - 6} autres groupes
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
 
                 {/* Liste des biens similaires */}

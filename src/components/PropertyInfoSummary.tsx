@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Home, MapPin, Ruler, Euro, Calendar } from "lucide-react";
+import { Edit, Home, MapPin, Ruler, Euro, Calendar, ArrowUpDown, Sun, Car, Package, Leaf } from "lucide-react";
 import type { PropertyInfo } from "@/types/project";
 
 interface PropertyInfoSummaryProps {
@@ -95,21 +95,44 @@ export function PropertyInfoSummary({ propertyInfo, onEdit }: PropertyInfoSummar
           {/* Informations supplémentaires */}
           <div className="flex flex-wrap gap-2 pt-2 border-t">
             {propertyInfo.etage !== undefined && (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="secondary" className="gap-1 text-xs">
+                <Home className="h-3 w-3" />
                 Étage {propertyInfo.etage}{propertyInfo.dernier_etage ? ' (dernier)' : ''}
               </Badge>
             )}
-            {propertyInfo.ascenseur && <Badge variant="outline" className="text-xs">Ascenseur</Badge>}
+            {propertyInfo.ascenseur && (
+              <Badge variant="secondary" className="gap-1 text-xs">
+                <ArrowUpDown className="h-3 w-3" />
+                Ascenseur
+              </Badge>
+            )}
             {propertyInfo.balcon_terrasse && (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="secondary" className="gap-1 text-xs">
+                <Sun className="h-3 w-3" />
                 Balcon/Terrasse{propertyInfo.surface_exterieure ? ` (${propertyInfo.surface_exterieure}m²)` : ''}
               </Badge>
             )}
-            {propertyInfo.parking && <Badge variant="outline" className="text-xs">Parking</Badge>}
-            {propertyInfo.cave && <Badge variant="outline" className="text-xs">Cave</Badge>}
-            {propertyInfo.dpe && <Badge variant="outline" className="text-xs">DPE: {propertyInfo.dpe}</Badge>}
+            {propertyInfo.parking && (
+              <Badge variant="secondary" className="gap-1 text-xs">
+                <Car className="h-3 w-3" />
+                Parking
+              </Badge>
+            )}
+            {propertyInfo.cave && (
+              <Badge variant="secondary" className="gap-1 text-xs">
+                <Package className="h-3 w-3" />
+                Cave
+              </Badge>
+            )}
+            {propertyInfo.dpe && (
+              <Badge variant="secondary" className="gap-1 text-xs">
+                <Leaf className="h-3 w-3" />
+                DPE: {propertyInfo.dpe}
+              </Badge>
+            )}
             {propertyInfo.annee_construction && (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="secondary" className="gap-1 text-xs">
+                <Calendar className="h-3 w-3" />
                 Construit en {propertyInfo.annee_construction}
               </Badge>
             )}

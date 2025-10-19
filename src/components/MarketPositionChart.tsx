@@ -3,13 +3,15 @@ interface MarketPositionChartProps {
   valeurBasse: number;
   valeurHaute: number;
   valeurMediane: number;
+  surface: number;
 }
 
 export function MarketPositionChart({ 
   prixDemande, 
   valeurBasse, 
   valeurHaute,
-  valeurMediane
+  valeurMediane,
+  surface
 }: MarketPositionChartProps) {
   // Déterminer les bornes dynamiques incluant le prix demandé
   const valeurMin = Math.min(valeurBasse, prixDemande);
@@ -50,7 +52,7 @@ export function MarketPositionChart({
       <div className="flex justify-center">
         <div className="w-full max-w-2xl space-y-4">
           {/* Barre de marché */}
-          <div className="relative h-32">
+          <div className="relative h-40">
             {/* Barre horizontale avec zones colorées */}
             <div className="absolute left-8 right-8 h-6 top-14 rounded-full overflow-hidden flex shadow-lg">
               {/* Zone basse (bleu pastel gradient) */}
@@ -81,15 +83,25 @@ export function MarketPositionChart({
             
             {/* Curseur prix demandé */}
             <div 
-              className="absolute top-0 -translate-x-1/2 z-10 transition-all duration-300"
+              className="absolute top-0 -translate-x-1/2 z-20 transition-all duration-300"
               style={{ left: `calc(2rem + (100% - 4rem) * ${positionPrixDemande / 100})` }}
             >
               <div className="flex flex-col items-center">
-                <div className="bg-primary text-primary-foreground px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap mb-2 shadow-md">
+                <div className="bg-primary text-primary-foreground px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap shadow-md">
                   {(prixDemande / 1000).toFixed(0)}k€
+                  <div className="text-xs font-normal mt-0.5">
+                    {(prixDemande / surface).toFixed(0)}€/m²
+                  </div>
                 </div>
-                <div className="w-1 h-10 bg-primary rounded-full shadow-lg" />
-                <div className="w-3 h-3 bg-primary rounded-full shadow-lg" />
+                {/* Cercle sur la jauge */}
+                <div 
+                  className="absolute w-4 h-4 bg-primary rounded-full shadow-lg border-2 border-background"
+                  style={{ 
+                    left: '50%', 
+                    transform: 'translateX(-50%)',
+                    top: '60px'
+                  }}
+                />
               </div>
             </div>
             
@@ -98,21 +110,18 @@ export function MarketPositionChart({
               <div className="text-xs text-muted-foreground font-semibold">
                 {(valeurBasse / 1000).toFixed(0)}k€
               </div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {(valeurBasse / surface).toFixed(0)}€/m²
+              </div>
             </div>
             
-            {/* Curseur valeur médiane */}
-            <div 
-              className="absolute bottom-2 -translate-x-1/2 transition-all duration-300"
-              style={{ left: `calc(2rem + (100% - 4rem) * ${positionMediane / 100})` }}
-            >
-              <div className="flex flex-col items-center">
-                <div className="w-0.5 h-4 bg-muted-foreground rounded-full" />
-                <div className="text-xs text-muted-foreground mt-1 whitespace-nowrap font-medium">
-                  Médiane
-                </div>
-                <div className="text-xs text-muted-foreground font-semibold mt-0.5">
-                  {(valeurMediane / 1000).toFixed(0)}k€
-                </div>
+            {/* Prix moyen au m² - centre de la jauge */}
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
+              <div className="text-xs text-muted-foreground font-semibold">
+                {(valeurMediane / 1000).toFixed(0)}k€
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {(valeurMediane / surface).toFixed(0)}€/m²
               </div>
             </div>
             
@@ -120,6 +129,9 @@ export function MarketPositionChart({
             <div className="absolute bottom-2 right-8 translate-x-1/2">
               <div className="text-xs text-muted-foreground font-semibold">
                 {(valeurHaute / 1000).toFixed(0)}k€
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {(valeurHaute / surface).toFixed(0)}€/m²
               </div>
             </div>
           </div>

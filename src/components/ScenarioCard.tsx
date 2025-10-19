@@ -8,14 +8,15 @@ interface ScenarioCardProps {
   scenario: OffreScenario;
   isActive: boolean;
   onSelect: () => void;
+  layout?: 'horizontal' | 'vertical';
 }
 
-export function ScenarioCard({ scenario, isActive, onSelect }: ScenarioCardProps) {
+export function ScenarioCard({ scenario, isActive, onSelect, layout = 'vertical' }: ScenarioCardProps) {
   const getRisqueColor = (risque: string) => {
     switch (risque) {
-      case 'faible': return 'bg-success/10 text-success-foreground border-success/30';
-      case 'modéré': return 'bg-warning/10 text-warning-foreground border-warning/30';
-      case 'élevé': return 'bg-destructive/10 text-destructive-foreground border-destructive/30';
+      case 'faible': return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'modéré': return 'bg-orange-50 text-orange-700 border-orange-200';
+      case 'élevé': return 'bg-red-50 text-red-700 border-red-200';
       default: return 'bg-muted';
     }
   };
@@ -30,17 +31,27 @@ export function ScenarioCard({ scenario, isActive, onSelect }: ScenarioCardProps
   };
 
   const getProgressColor = (proba: number) => {
-    if (proba >= 70) return '[&>div]:bg-success';
-    if (proba >= 50) return '[&>div]:bg-warning';
-    return '[&>div]:bg-destructive';
+    if (proba >= 70) return '[&>div]:bg-blue-500';
+    if (proba >= 50) return '[&>div]:bg-orange-500';
+    return '[&>div]:bg-red-500';
   };
 
   return (
     <Card 
-      className={`cursor-pointer transition-all hover:shadow-md ${
-        isActive ? 'ring-2 ring-primary' : ''
-      }`}
+      className={`cursor-pointer transition-all hover:shadow-md m-1 ${
+        isActive ? 'ring-2 ring-primary shadow-lg' : ''
+      } ${layout === 'horizontal' ? 'min-w-[350px] snap-center' : ''}`}
       onClick={onSelect}
+      role="button"
+      tabIndex={0}
+      aria-pressed={isActive}
+      aria-label={`Scénario ${scenario.nom}, montant ${scenario.montant?.toLocaleString('fr-FR')}€, probabilité d'acceptation ${scenario.probabilite_acceptation}%`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
     >
       <CardHeader>
         <div className="flex items-start justify-between">
@@ -83,7 +94,7 @@ export function ScenarioCard({ scenario, isActive, onSelect }: ScenarioCardProps
           <Badge variant="outline" className={getRisqueColor(scenario.risque)}>
             Risque {scenario.risque}
           </Badge>
-          <Badge variant="outline" className="bg-accent/10">
+          <Badge variant="secondary">
             {scenario.plus_value_potentielle}
           </Badge>
         </div>

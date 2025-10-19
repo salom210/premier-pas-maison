@@ -40,10 +40,7 @@ export function FiabiliteCritere({
             {score}/{maxScore}
           </span>
         </div>
-        <p className={cn(
-          "text-xs",
-          warning ? "text-warning-foreground" : "text-muted-foreground"
-        )}>
+        <p className="text-xs text-muted-foreground">
           {detail}
         </p>
       </div>
