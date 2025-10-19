@@ -169,7 +169,7 @@ export function IntegrationTest() {
         nombrePieces: 3
       });
       
-      const usedFallback = analysis.source === '2024' || analysis.message?.includes('2024');
+      const usedFallback = analysis.dataSource === '2024';
       
       setResults(prev => prev.map(r => 
         r.name === 'Fallback 2025→2024' 
@@ -181,7 +181,7 @@ export function IntegrationTest() {
                 : 'Fallback non déclenché',
               details: { 
                 source: analysis.source,
-                message: analysis.message
+                dataSource: analysis.dataSource
               }
             } 
           : r

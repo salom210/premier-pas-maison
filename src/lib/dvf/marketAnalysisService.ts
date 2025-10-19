@@ -271,9 +271,9 @@ function calculateRoomStatistics(transactions: DVFTransaction[], targetRooms: nu
       prix_min_m2: Math.min(...prices),
       prix_max_m2: Math.max(...prices),
       ecart_avec_cible: Math.abs(rooms - targetRooms),
-      priorite: rooms === targetRooms ? 'exacte' : 
+      priorite: (rooms === targetRooms ? 'exacte' : 
                 Math.abs(rooms - targetRooms) === 1 ? 'proche' :
-                Math.abs(rooms - targetRooms) === 2 ? 'elargie' : 'autre'
+                Math.abs(rooms - targetRooms) === 2 ? 'elargie' : 'autre') as 'exacte' | 'proche' | 'elargie' | 'autre'
     };
   });
   

@@ -4,32 +4,32 @@ import type { Offre } from "@/types/project";
 
 export default function OffreTool() {
   const [offre, setOffre] = useState<Offre>({
-    id: "standalone-offer",
     property_info: null,
     market_analysis: null,
     chatgpt_analysis: null,
     fiabilite: null,
     scenarios: [],
-    scenario_actif: null,
+    scenario_actif: "",
+    draft: "",
     offre_acceptee: false,
-    date_creation: new Date().toISOString(),
-    derniere_maj: new Date().toISOString()
+    market: { ref_price_m2: null, source: null },
+    projection: { taux_annuel: 0, frais_revente: 0, valeur_future: null, gain_net: null }
   });
 
   // Fonction pour vider complètement le localStorage (utile pour le debug)
   const clearAllData = () => {
     localStorage.removeItem('standalone-offer');
     setOffre({
-      id: "standalone-offer",
       property_info: null,
       market_analysis: null,
       chatgpt_analysis: null,
       fiabilite: null,
       scenarios: [],
-      scenario_actif: null,
+      scenario_actif: "",
+      draft: "",
       offre_acceptee: false,
-      date_creation: new Date().toISOString(),
-      derniere_maj: new Date().toISOString()
+      market: { ref_price_m2: null, source: null },
+      projection: { taux_annuel: 0, frais_revente: 0, valeur_future: null, gain_net: null }
     });
     console.log('🧹 Toutes les données ont été supprimées');
   };
