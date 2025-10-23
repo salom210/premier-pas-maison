@@ -123,13 +123,15 @@ async function fetchAIMarketData(
 
 export async function fetchChatGPTAnalysis(
   propertyInfo: any,
-  marketAnalysis: MarketAnalysis | null
+  marketAnalysis: MarketAnalysis | null,
+  prixReferenceM2?: number
 ): Promise<any> {
   try {
     const { data, error } = await supabase.functions.invoke('chatgpt-market-analysis', {
       body: {
         propertyInfo,
-        marketAnalysis
+        marketAnalysis,
+        prix_reference_m2: prixReferenceM2
       }
     });
 
