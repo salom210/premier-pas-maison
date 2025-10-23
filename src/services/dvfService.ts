@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { MarketAnalysis } from "@/types/project";
+import type { MarketAnalysis, PropertyInfo, ChatGPTAnalysis, OffreScenario } from "@/types/project";
 import { analyzeDVFMarket } from "@/lib/dvf/marketAnalysisService";
 import { loadDVFData } from "@/lib/dvf/dvfLoader";
 

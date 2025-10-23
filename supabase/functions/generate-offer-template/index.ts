@@ -135,7 +135,7 @@ Format de réponse : Texte brut, sans formatage markdown, prêt à être copié-
     
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Erreur interne du serveur',
+        error: error instanceof Error ? error.message : 'Erreur interne du serveur',
         success: false 
       }),
       { 
