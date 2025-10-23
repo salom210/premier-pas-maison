@@ -328,18 +328,16 @@ export async function analyzeDVFMarketData(params: DVFAnalysisParams): Promise<M
       const exactPostalCodeTransactions = transactions.filter(t => t.code_postal === params.codePostal);
       console.log(`Found ${exactPostalCodeTransactions.length} transactions for exact postal code ${params.codePostal}`);
       
-      // Si aucune transaction pour le code postal exact, utiliser le fallback IA
-      if (exactPostalCodeTransactions.length === 0) {
-        console.log(`No exact postal code match for ${params.codePostal}, falling back to AI analysis`);
-        return null; // Retourner null pour déclencher le fallback IA
-      }
-      
+      // Essayer l'analyse DVF même si pas de correspondance exacte (utilise le département)
       const analysis = analyzeDVFMarket(transactions, params, dataSource);
       if (analysis) {
         analysis.source = 'DVF';
+        console.log(`DVF analysis successful for ${params.codePostal}`);
+        return analysis;
+      } else {
+        console.log(`No similar transactions found for ${params.codePostal}, falling back to AI analysis`);
+        return null; // Retourner null pour déclencher le fallback IA
       }
-      
-      return analysis;
     } catch (progressiveError) {
       console.warn('Progressive loader failed, falling back to original loader:', progressiveError);
       
@@ -352,18 +350,16 @@ export async function analyzeDVFMarketData(params: DVFAnalysisParams): Promise<M
       const exactPostalCodeTransactions = transactions.filter(t => t.code_postal === params.codePostal);
       console.log(`Found ${exactPostalCodeTransactions.length} transactions for exact postal code ${params.codePostal}`);
       
-      // Si aucune transaction pour le code postal exact, utiliser le fallback IA
-      if (exactPostalCodeTransactions.length === 0) {
-        console.log(`No exact postal code match for ${params.codePostal}, falling back to AI analysis`);
-        return null; // Retourner null pour déclencher le fallback IA
-      }
-      
+      // Essayer l'analyse DVF même si pas de correspondance exacte (utilise le département)
       const analysis = analyzeDVFMarket(transactions, params, dataSource);
       if (analysis) {
         analysis.source = 'DVF';
+        console.log(`DVF analysis successful for ${params.codePostal}`);
+        return analysis;
+      } else {
+        console.log(`No similar transactions found for ${params.codePostal}, falling back to AI analysis`);
+        return null; // Retourner null pour déclencher le fallback IA
       }
-      
-      return analysis;
     }
   } catch (error) {
     console.error('Error analyzing DVF market data:', error);

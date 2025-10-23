@@ -7,9 +7,17 @@ import type { ChatGPTAnalysis } from "@/types/project";
 interface ChatGPTAnalysisCardProps {
   analysis: ChatGPTAnalysis;
   prixDemande: number;
+  prixReferenceM2: number;
+  surfaceHabitable: number;
 }
 
-export function ChatGPTAnalysisCard({ analysis, prixDemande }: ChatGPTAnalysisCardProps) {
+export function ChatGPTAnalysisCard({ analysis, prixDemande, prixReferenceM2, surfaceHabitable }: ChatGPTAnalysisCardProps) {
+  // Calculer le prix juste basé sur le prix de référence/m² et la surface
+  const prixJusteCalcule = Math.round(prixReferenceM2 * surfaceHabitable);
+  
+  // Calculer l'écart basé sur le prix juste calculé
+  const ecartCalcule = Math.round(((prixDemande - prixJusteCalcule) / prixJusteCalcule) * 100);
+  
   const getConclusionVariant = (conclusion: string) => {
     switch (conclusion) {
       case 'sous-cote': return "default";
@@ -29,10 +37,6 @@ export function ChatGPTAnalysisCard({ analysis, prixDemande }: ChatGPTAnalysisCa
   const formatEuros = (value: number) => {
     return value.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
   };
-
-  const economiesPotentielles = analysis.marge_negociation > 0 
-    ? Math.round(prixDemande * analysis.marge_negociation / 100)
-    : 0;
 
   return (
     <Card className="border-primary/20">
@@ -62,22 +66,22 @@ export function ChatGPTAnalysisCard({ analysis, prixDemande }: ChatGPTAnalysisCa
         <div className="grid grid-cols-2 gap-4 p-4 bg-accent/10 rounded-lg">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              {analysis.ecart_estime < 0 ? (
+              {ecartCalcule < 0 ? (
                 <TrendingDown className="h-4 w-4 text-success" />
               ) : (
                 <TrendingUp className="h-4 w-4 text-destructive" />
               )}
               <span className="text-xs text-muted-foreground">Écart prix / marché</span>
             </div>
-            <p className={`text-2xl font-bold ${analysis.ecart_estime < 0 ? 'text-success' : 'text-destructive'}`}>
-              {analysis.ecart_estime > 0 ? '+' : ''}{analysis.ecart_estime}%
+            <p className={`text-2xl font-bold ${ecartCalcule < 0 ? 'text-success' : 'text-destructive'}`}>
+              {ecartCalcule > 0 ? '+' : ''}{ecartCalcule}%
             </p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground mb-1">Prix juste estimé</p>
-            <p className="text-xl font-semibold text-foreground">{formatEuros(analysis.prix_juste_estime)}</p>
+            <p className="text-xl font-semibold text-foreground">{formatEuros(prixJusteCalcule)}</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {Math.round(analysis.prix_juste_estime / (prixDemande / 100) - 100)}% vs demandé
+              {Math.round(prixJusteCalcule / (prixDemande / 100) - 100)}% vs demandé
             </p>
           </div>
         </div>
@@ -125,40 +129,6 @@ export function ChatGPTAnalysisCard({ analysis, prixDemande }: ChatGPTAnalysisCa
           <AlertTitle className="text-sm">Recommandation</AlertTitle>
           <AlertDescription className="text-xs">{analysis.recommandation}</AlertDescription>
         </Alert>
-
-        {/* Marge de négociation */}
-        {analysis.marge_negociation > 0 && (
-          <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-semibold text-foreground">Marge de négociation suggérée</span>
-              <Badge variant="outline" className="text-primary">
-                {analysis.marge_negociation}%
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Soit environ <span className="font-semibold text-foreground">{formatEuros(economiesPotentielles)}</span> de réduction potentielle
-            </p>
-          </div>
-        )}
-
-        {/* Footer */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 border-t">
-          <div className="flex items-center gap-2">
-            <span>Confiance:</span>
-            <Badge 
-              variant={analysis.confiance === 'élevée' ? 'default' : analysis.confiance === 'moyenne' ? 'secondary' : 'outline'}
-              className="text-xs"
-            >
-              {analysis.confiance}
-            </Badge>
-          </div>
-          <span className="text-right max-w-xs truncate" title={analysis.sources_comparaison}>
-            {analysis.sources_comparaison}
-          </span>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Données du marché: {analysis.date_donnees_marche} ({analysis.fraicheur_donnees})
-        </p>
       </CardContent>
     </Card>
   );

@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { propertyInfo, marketAnalysis } = await req.json();
+    const { propertyInfo, marketAnalysis, prix_reference_m2 } = await req.json();
     console.log('ChatGPT Market Analysis request:', { propertyInfo, marketAnalysis });
 
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
@@ -49,11 +49,12 @@ ${propertyInfo.taxe_fonciere ? `- Taxe foncière annuelle : ${propertyInfo.taxe_
 
 ${marketAnalysis ? `
 DONNÉES MARCHÉ EXISTANTES :
+- Prix de référence/m² à utiliser : ${prix_reference_m2?.toLocaleString() || marketAnalysis.prix_moyen_m2_quartier?.toLocaleString() || 'N/A'} €${prix_reference_m2 && prix_reference_m2 !== marketAnalysis.prix_moyen_m2_quartier ? ' (correspondance exacte de pièces)' : ' (moyenne pondérée)'}
 - Prix moyen/m² dans le quartier : ${marketAnalysis.prix_moyen_m2_quartier?.toLocaleString() || 'N/A'} €
 - Fourchette marché : ${marketAnalysis.valeur_estimee_basse?.toLocaleString()} - ${marketAnalysis.valeur_estimee_haute?.toLocaleString()} €
 - Valeur médiane estimée : ${marketAnalysis.valeur_estimee_mediane?.toLocaleString()} €
 - Nombre transactions similaires : ${marketAnalysis.nombre_transactions_similaires || 0}
-- Source des données : ${marketAnalysis.source || 'N/A'}
+- Source des données : ${marketAnalysis.source || 'N/A'}${marketAnalysis.source === 'DVF' ? ' (données DVF = transactions réelles et récentes)' : ''}
 ` : ''}
 
 IMPORTANT : Dans ton analyse, PRÉCISE OBLIGATOIREMENT :
@@ -71,6 +72,8 @@ Ton rôle :
 3. Identifier les points forts et faibles du bien
 4. Fournir une recommandation d'action claire pour l'acheteur
 5. Suggérer une marge de négociation réaliste
+
+IMPORTANT : N'invente pas, base-toi sur les données les plus fraîches possibles. Si les données fournies proviennent de DVF, ce sont des transactions réelles et récentes. Utilise le prix de référence/m² fourni comme base pour tous tes calculs.
 
 Contexte : L'utilisateur souhaite acheter ce bien et a besoin d'une analyse objective.
 

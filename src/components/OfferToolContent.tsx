@@ -199,7 +199,8 @@ export function OfferToolContent({
       let aiErrorType = null;
       
       try {
-        chatgptAnalysis = await fetchChatGPTAnalysis(localOffre.property_info, marketData);
+        const prixReferenceM2 = marketData.prix_moyen_m2_exact ?? marketData.prix_moyen_m2_quartier;
+        chatgptAnalysis = await fetchChatGPTAnalysis(localOffre.property_info, marketData, prixReferenceM2);
       } catch (error) {
         if (error instanceof Error) {
           if (error.message === 'RATE_LIMIT') {
@@ -999,6 +1000,8 @@ export function OfferToolContent({
                   <ChatGPTAnalysisCard 
                     analysis={localOffre.chatgpt_analysis}
                     prixDemande={localOffre.property_info.prix_demande}
+                    prixReferenceM2={localOffre.market_analysis?.prix_moyen_m2_exact ?? localOffre.market_analysis?.prix_moyen_m2_quartier ?? 0}
+                    surfaceHabitable={localOffre.property_info.surface_habitable}
                   />
                   <FiabiliteGauge fiabilite={localOffre.fiabilite} />
                 </>
