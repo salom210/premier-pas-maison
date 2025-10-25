@@ -31,7 +31,7 @@ export function FiabiliteGauge({ fiabilite }: FiabiliteGaugeProps) {
             <Gauge className="h-5 w-5 text-primary" />
             Fiabilité de l'analyse
           </CardTitle>
-          <Badge variant={getFiabiliteVariant(fiabilite.score)} className="text-sm">
+          <Badge variant={getFiabiliteVariant(fiabilite.score)} className="text-xs">
             {fiabilite.score}/100 - {fiabilite.niveau}
           </Badge>
         </div>

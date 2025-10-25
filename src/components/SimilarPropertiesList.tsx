@@ -7,21 +7,30 @@ import type { SimilarProperty } from "@/types/project";
 
 interface SimilarPropertiesListProps {
   properties: SimilarProperty[];
-  currentPropertyPrice: number;
+  currentPropertyPriceM2: number;
+  currentPropertyInfo?: {
+    surface_habitable: number;
+    nombre_pieces: number;
+    ville: string;
+    type_bien?: string;
+  };
 }
 
-export function SimilarPropertiesList({ properties, currentPropertyPrice }: SimilarPropertiesListProps) {
+export function SimilarPropertiesList({ properties, currentPropertyPriceM2, currentPropertyInfo }: SimilarPropertiesListProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   
   if (!properties || properties.length === 0) {
     return null;
   }
 
-  const getPriceComparison = (prixVente: number) => {
-    if (!currentPropertyPrice || currentPropertyPrice <= 0) {
+  const getPriceComparison = (prixVente: number, surface: number) => {
+    if (!currentPropertyPriceM2 || currentPropertyPriceM2 <= 0) {
       return { icon: Minus, color: "text-muted-foreground", label: "Prix demandé indisponible" };
     }
-    const diff = ((prixVente - currentPropertyPrice) / currentPropertyPrice) * 100;
+    
+    const prixM2Vendu = prixVente / surface;
+    const diff = ((prixM2Vendu - currentPropertyPriceM2) / currentPropertyPriceM2) * 100;
+    
     if (!Number.isFinite(diff) || Math.abs(diff) < 5) {
       return { icon: Minus, color: "text-muted-foreground", label: "Prix similaire" };
     }
@@ -37,7 +46,15 @@ export function SimilarPropertiesList({ properties, currentPropertyPrice }: Simi
         <CardTitle className="text-base flex items-center justify-between">
           <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4" />
-            Biens similaires vendus récemment
+            <div className="flex items-center gap-2">
+              {currentPropertyInfo ? (
+                <>
+                  {currentPropertyInfo.type_bien || 'Appartements'} similaires vendus récemment
+                </>
+              ) : (
+                'Biens similaires vendus récemment'
+              )}
+            </div>
             <Badge variant="secondary" className="ml-2">
               {properties.length}
             </Badge>
@@ -61,7 +78,7 @@ export function SimilarPropertiesList({ properties, currentPropertyPrice }: Simi
         <div className="space-y-3">
           {properties.map((property, index) => {
             const prixM2 = Math.round(property.prix_vente / property.surface);
-            const comparison = getPriceComparison(property.prix_vente);
+            const comparison = getPriceComparison(property.prix_vente, property.surface);
             const ComparisonIcon = comparison.icon;
 
             return (
@@ -73,9 +90,12 @@ export function SimilarPropertiesList({ properties, currentPropertyPrice }: Simi
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-2">
                       <h4 className="font-medium text-sm">
-                        {property.adresse || `Bien similaire #${index + 1}`}
+                        {property.surface && typeof property.surface === 'number' && property.surface > 0 
+                          ? `Appartement de ${property.surface}m²`
+                          : 'Appartement'
+                        }
                       </h4>
-                      {property.distance_km && (
+                      {property.distance_km > 0 && (
                         <Badge variant="outline" className="text-xs">
                           {property.distance_km} km
                         </Badge>
@@ -83,8 +103,9 @@ export function SimilarPropertiesList({ properties, currentPropertyPrice }: Simi
                     </div>
                     
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <span>{property.surface} m²</span>
-                      <span>{property.nombre_pieces} pièces</span>
+                      {property.nombre_pieces > 0 && (
+                        <span>{property.nombre_pieces} pièces</span>
+                      )}
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         {new Date(property.date_vente).toLocaleDateString('fr-FR', { 

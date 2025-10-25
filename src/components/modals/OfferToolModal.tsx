@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -24,9 +24,12 @@ import { fetchMarketData, fetchChatGPTAnalysis, calculateFiabilite, calculerProb
 import { MarketPositionChart } from "@/components/MarketPositionChart";
 import { ScenarioCard } from "@/components/ScenarioCard";
 import { PropertyInfoSummary } from "@/components/PropertyInfoSummary";
-import { ChatGPTAnalysisCard } from "@/components/ChatGPTAnalysisCard";
+import { ExpertAnalysisWithAdjustments } from "@/components/ExpertAnalysisWithAdjustments";
 import { FiabiliteGauge } from "@/components/FiabiliteGauge";
 import { SimilarPropertiesList } from "@/components/SimilarPropertiesList";
+import { OfferStepper, type OfferStep } from "@/components/ui/OfferStepper";
+import { StepNavigationFooter } from "@/components/StepNavigationFooter";
+import { detectApplicableAdjustments, updateMarketAnalysisWithAdjustments } from "@/lib/adjustmentsService";
 
 interface OfferToolModalProps {
   open: boolean;
@@ -52,6 +55,44 @@ export function OfferToolModal({
   const [openAddressPopover, setOpenAddressPopover] = useState(false);
   const { toast } = useToast();
   const hasAutoSwitchedToMarche = useRef(false);
+
+  // Define steps for the stepper
+  const steps: OfferStep[] = [
+    { 
+      id: 'bien', 
+      label: 'Informations du bien',
+      completed: !!localOffre.property_info,
+      disabled: false
+    },
+    { 
+      id: 'marche', 
+      label: 'Analyse de marché',
+      completed: !!localOffre.market_analysis,
+      disabled: !localOffre.property_info
+    },
+    { 
+      id: 'scenarios', 
+      label: 'Scénarios d\'offre',
+      completed: localOffre.scenarios.length > 0,
+      disabled: !localOffre.market_analysis
+    },
+    { 
+      id: 'draft', 
+      label: 'Modèle d\'offre',
+      completed: !!localOffre.draft,
+      disabled: localOffre.scenarios.length === 0
+    },
+    { 
+      id: 'risks', 
+      label: 'Points de vigilance',
+      completed: localOffre.offre_acceptee,
+      disabled: !localOffre.draft
+    }
+  ];
+
+  const handleStepClick = useCallback((stepId: string) => {
+    setActiveTab(stepId);
+  }, []);
 
   useEffect(() => {
     setLocalOffre(offre);
@@ -235,9 +276,19 @@ export function OfferToolModal({
         fiabiliteScore = calculateFiabilite(chatgptAnalysis, marketData, localOffre.property_info);
       }
 
+      // Détecter les ajustements applicables
+      const applicableAdjustments = await detectApplicableAdjustments(localOffre.property_info);
+      
+      // Mettre à jour l'analyse de marché avec les ajustements
+      const marketDataWithAdjustments = updateMarketAnalysisWithAdjustments(marketData, applicableAdjustments);
+
       setLocalOffre(prev => ({
         ...prev,
-        market_analysis: marketData,
+        property_info: {
+          ...prev.property_info,
+          adjustments: applicableAdjustments
+        },
+        market_analysis: marketDataWithAdjustments,
         chatgpt_analysis: chatgptAnalysis,
         fiabilite: fiabiliteScore
       }));
@@ -286,7 +337,8 @@ export function OfferToolModal({
 
   // Generate scenarios based on market data
   const generateScenarios = (marketData: MarketAnalysis, propertyInfo: PropertyInfo) => {
-    const valeurMediane = marketData.valeur_estimee_mediane;
+    // Utiliser les valeurs ajustées si disponibles, sinon les valeurs de base
+    const valeurMediane = marketData.valeur_estimee_ajustee || marketData.valeur_estimee_mediane;
     const valeurBasse = marketData.valeur_estimee_basse;
     const prixDemande = propertyInfo.prix_demande;
 
@@ -377,12 +429,35 @@ export function OfferToolModal({
       }
     ];
 
-    setLocalOffre(prev => ({
-      ...prev,
-      scenarios,
-      scenario_actif: "balanced"
-    }));
+    return scenarios;
   };
+
+  // Gestion des ajustements de prix
+  const handleAdjustmentToggle = useCallback(async (adjustmentId: string, isApplied: boolean) => {
+    if (!localOffre.property_info?.adjustments) return;
+
+    const updatedAdjustments = localOffre.property_info.adjustments.map(adj => 
+      adj.id === adjustmentId ? { ...adj, isApplied } : adj
+    );
+
+    const updatedPropertyInfo = {
+      ...localOffre.property_info,
+      adjustments: updatedAdjustments
+    };
+
+    // Mettre à jour l'analyse de marché avec les nouveaux ajustements
+    const updatedMarketAnalysis = localOffre.market_analysis 
+      ? updateMarketAnalysisWithAdjustments(localOffre.market_analysis, updatedAdjustments)
+      : localOffre.market_analysis;
+
+    const updatedOffre = {
+      ...localOffre,
+      property_info: updatedPropertyInfo,
+      market_analysis: updatedMarketAnalysis
+    };
+
+    setLocalOffre(updatedOffre);
+  }, [localOffre.property_info?.adjustments, localOffre.market_analysis]);
 
   // Handle scenario generation button click
   const handleGenerateScenarios = () => {
@@ -404,7 +479,12 @@ export function OfferToolModal({
     }));
 
     // Générer immédiatement les nouveaux scénarios
-    generateScenarios(localOffre.market_analysis, localOffre.property_info);
+    const newScenarios = generateScenarios(localOffre.market_analysis, localOffre.property_info);
+    setLocalOffre(prev => ({
+      ...prev,
+      scenarios: newScenarios,
+      scenario_actif: newScenarios.find(s => s.recommande)?.id || newScenarios[0]?.id || ""
+    }));
 
     // Basculer vers l'onglet scénarios
     setActiveTab("scenarios");
@@ -536,29 +616,15 @@ Cordialement,
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
+          {/* Stepper */}
+          <OfferStepper 
+            steps={steps}
+            currentStep={activeTab}
+            onStepClick={handleStepClick}
+            className="mb-6"
+          />
+
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="bien">
-              <Home className="h-4 w-4 mr-2" />
-              Bien
-            </TabsTrigger>
-            <TabsTrigger value="marche" disabled={!localOffre.property_info}>
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Marché
-            </TabsTrigger>
-            <TabsTrigger value="scenarios" disabled={!localOffre.market_analysis}>
-              <Lightbulb className="h-4 w-4 mr-2" />
-              Scénarios
-            </TabsTrigger>
-            <TabsTrigger value="draft" disabled={!localOffre.market_analysis}>
-              <FileText className="h-4 w-4 mr-2" />
-              Draft
-            </TabsTrigger>
-            <TabsTrigger value="risks">
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              Risques
-            </TabsTrigger>
-          </TabsList>
 
           {/* TAB 1: BIEN */}
           <TabsContent value="bien" className="space-y-4 mt-4">
@@ -895,23 +961,15 @@ Cordialement,
             </Card>
 
             <div className="flex justify-end">
-              <Button 
-                onClick={handleFetchMarketData}
+              <StepNavigationFooter
+                title="Prêt à analyser le marché ?"
+                description="Lancez l'analyse pour obtenir une estimation précise"
+                buttonLabel="Analyser le marché"
+                onNext={handleFetchMarketData}
                 disabled={isLoadingMarket || !localOffre.property_info}
-                size="lg"
-              >
-                {isLoadingMarket ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Analyse en cours...
-                  </>
-                ) : (
-                  <>
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    Analyser le marché
-                  </>
-                )}
-              </Button>
+                disabledReason="Remplissez les informations du bien et lancez l'analyse de marché"
+                isLoading={isLoadingMarket}
+              />
             </div>
           </TabsContent>
 
@@ -1004,14 +1062,15 @@ Cordialement,
                   </Card>
                 )}
 
-                {/* Analyse experte IA et Fiabilité */}
+                {/* Analyse experte IA avec ajustements */}
                 {localOffre.chatgpt_analysis && localOffre.fiabilite ? (
                   <>
-                    <ChatGPTAnalysisCard 
+                    <ExpertAnalysisWithAdjustments
                       analysis={localOffre.chatgpt_analysis}
-                      prixDemande={localOffre.property_info.prix_demande}
-                      prixReferenceM2={localOffre.market_analysis?.prix_moyen_m2_exact ?? localOffre.market_analysis?.prix_moyen_m2_quartier ?? 0}
-                      surfaceHabitable={localOffre.property_info.surface_habitable}
+                      propertyInfo={localOffre.property_info}
+                      marketAnalysis={localOffre.market_analysis}
+                      adjustments={localOffre.property_info.adjustments || []}
+                      onAdjustmentToggle={handleAdjustmentToggle}
                     />
                     <FiabiliteGauge fiabilite={localOffre.fiabilite} />
                   </>
@@ -1126,28 +1185,32 @@ Cordialement,
                  localOffre.market_analysis.transactions_similaires.length > 0 && (
                   <SimilarPropertiesList 
                     properties={localOffre.market_analysis.transactions_similaires}
-                    currentPropertyPrice={localOffre.property_info.prix_demande || localOffre.market_analysis.valeur_estimee_mediane}
+                    currentPropertyPriceM2={Math.round((localOffre.property_info.prix_demande || localOffre.market_analysis.valeur_estimee_mediane) / localOffre.property_info.surface_habitable)}
+                    currentPropertyInfo={{
+                      surface_habitable: localOffre.property_info.surface_habitable,
+                      nombre_pieces: localOffre.property_info.nombre_pieces,
+                      ville: localOffre.property_info.ville,
+                      type_bien: 'Appartement' // Par défaut, peut être amélioré avec plus de données
+                    }}
                   />
                 )}
 
-                {/* Actions */}
-                <div className="flex gap-3">
-                  <Button 
-                    onClick={handleFetchMarketData} 
-                    variant="outline"
-                    disabled={isLoadingMarket}
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Rafraîchir l'analyse
-                  </Button>
-                  <Button 
-                    onClick={handleGenerateScenarios}
-                    className="flex-1"
-                  >
-                    Générer des scénarios d'offre
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </div>
+                {/* Navigation footer */}
+                <StepNavigationFooter
+                  title="Prêt à définir vos scénarios ?"
+                  description="Générez des scénarios d'offre basés sur l'analyse"
+                  buttonLabel="Générer des scénarios"
+                  onNext={handleGenerateScenarios}
+                  disabled={!localOffre.market_analysis}
+                  disabledReason="Générez d'abord l'analyse de marché pour créer des scénarios"
+                  secondaryButton={{
+                    label: "Rafraîchir l'analyse",
+                    onClick: handleFetchMarketData,
+                    disabled: isLoadingMarket,
+                    isLoading: isLoadingMarket,
+                    icon: <RefreshCw className="h-4 w-4" />
+                  }}
+                />
               </>
             )}
 
@@ -1244,10 +1307,14 @@ Cordialement,
             </Card>
 
             <div className="flex justify-end">
-              <Button onClick={generateDraft}>
-                <FileText className="h-4 w-4 mr-2" />
-                Générer le message d'offre
-              </Button>
+              <StepNavigationFooter
+                title="Prêt à générer votre offre ?"
+                description="Créez un modèle d'offre personnalisé"
+                buttonLabel="Générer le message d'offre"
+                onNext={generateDraft}
+                disabled={!localOffre.scenario_actif}
+                disabledReason="Sélectionnez d'abord un scénario d'offre"
+              />
             </div>
           </TabsContent>
 

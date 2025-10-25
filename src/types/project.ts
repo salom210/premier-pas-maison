@@ -94,6 +94,14 @@ export interface UIState {
   show_only_blockers: boolean;
 }
 
+export interface PriceAdjustment {
+  id: string;
+  label: string;
+  type: 'bonus' | 'malus';
+  impact_pct: number;
+  isApplied: boolean;
+}
+
 export interface PropertyInfo {
   adresse: string;
   code_postal: string;
@@ -114,6 +122,7 @@ export interface PropertyInfo {
   charges_trimestrielles?: number;
   taxe_fonciere?: number;
   dpe?: string;
+  adjustments?: PriceAdjustment[];
 }
 
 export interface SimilarProperty {
@@ -160,6 +169,9 @@ export interface MarketAnalysis {
   // Nouveaux champs pour la fiabilité et le prix exact
   fiabilite_estimation?: 'forte' | 'moyenne' | 'faible';
   prix_moyen_m2_exact?: number | null;
+  // Champs pour les ajustements de prix
+  prix_ajuste_m2?: number | null;
+  valeur_estimee_ajustee?: number | null;
 }
 
 export interface OffreScenario {

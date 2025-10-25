@@ -1,0 +1,31 @@
+id,label,type,impact_pct
+S1,Dernier étage avec ascenseur,bonus,12
+S2,Balcon ou terrasse privatif,bonus,9
+S3,Bien entièrement rénové (<5 ans),bonus,7
+S4,DPE A ou B,bonus,5
+S5,Quartier très recherché (centre Paris),bonus,10
+S6,Parking ou stationnement privatif,bonus,4
+S7,Bonne exposition plein sud sans vis-à-vis,bonus,6
+S8,Faibles charges de copropriété,bonus,3
+S9,Immeuble récent (<10 ans),bonus,5
+S10,Accessibilité métro/RER <5 mn,bonus,4
+S11,Surface supérieure à moyenne du quartier,bonus,5
+S12,Vue dégagée / absence construction à venir,bonus,4
+S13,Éligible dispositifs primo-accédants (PTZ…),bonus,3
+S14,Façade ou toiture récentes,bonus,4
+S15,Terrasse ou balcon de grande surface (>10 m²),bonus,10
+D1,Rez-de-chaussée côté rue vis-à-vis et bruit,malus,-15
+D2,Mauvaise exposition (nord ou sombre) + vis-à-vis fort,malus,-10
+D3,DPE F ou G (passoire thermique),malus,-10
+D4,Travaux majeurs imminents (toiture/façade/ascenseur),malus,-18
+D5,Immeuble ou copropriété en mauvais état ou procédure,malus,-8
+D6,Charges de copropriété ou taxe foncière très élevées,malus,-5
+D7,Bien loué non libre à la vente,malus,-9
+D8,Zone peu dynamique / transports faibles,malus,-6
+D9,Immeuble ancien (>50 ans) sans rénovation significative,malus,-4
+D10,Surface atypique ou mauvaise répartition (ex : 100 m² pour 1 chambre),malus,-4
+D11,Absence d'ascenseur pour étage élevé (>4ème sans ascenseur),malus,-10
+D12,Absence d'extérieur (balcon/terrasse) dans marché recherché,malus,-3
+D13,Vis-à-vis direct / manque d'intimité,malus,-5
+D14,Mauvaise accessibilité (bus uniquement, pas métro/RER),malus,-4
+D15,Étage élevé sans ascenseur + petit immeuble,malus,-8
