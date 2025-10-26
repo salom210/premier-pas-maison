@@ -25,7 +25,7 @@ export function RoomsPriorityTest() {
       setTransactions(dvfData);
       
       // Analyser le marché
-      const result = analyzeDVFMarket(dvfData, {
+      const result = await analyzeDVFMarket(dvfData, {
         codePostal,
         ville: 'Test',
         surface,

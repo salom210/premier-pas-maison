@@ -14,9 +14,9 @@ interface ScenarioCardProps {
 export function ScenarioCard({ scenario, isActive, onSelect, layout = 'vertical' }: ScenarioCardProps) {
   const getRisqueColor = (risque: string) => {
     switch (risque) {
-      case 'faible': return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'modéré': return 'bg-orange-50 text-orange-700 border-orange-200';
-      case 'élevé': return 'bg-red-50 text-red-700 border-red-200';
+      case 'faible': return 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200';
+      case 'modéré': return 'bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200';
+      case 'élevé': return 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200';
       default: return 'bg-muted';
     }
   };
@@ -31,7 +31,7 @@ export function ScenarioCard({ scenario, isActive, onSelect, layout = 'vertical'
   };
 
   const getProgressColor = (proba: number) => {
-    if (proba >= 70) return '[&>div]:bg-blue-500';
+    if (proba >= 70) return '[&>div]:bg-[hsl(140,65%,75%)]';
     if (proba >= 50) return '[&>div]:bg-orange-500';
     return '[&>div]:bg-red-500';
   };
@@ -93,9 +93,6 @@ export function ScenarioCard({ scenario, isActive, onSelect, layout = 'vertical'
         <div className="flex items-center gap-2">
           <Badge variant="outline" className={getRisqueColor(scenario.risque)}>
             Risque {scenario.risque}
-          </Badge>
-          <Badge variant="secondary">
-            {scenario.plus_value_potentielle}
           </Badge>
         </div>
 
