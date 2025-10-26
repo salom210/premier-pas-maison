@@ -9,6 +9,12 @@ export interface DVFTransaction {
   code_postal: string;
   prix_m2: number;
   nombre_pieces: number;
+  // Champs d'adresse pour la proximité géographique
+  no_voie?: string;
+  type_voie?: string;
+  voie?: string;
+  commune?: string;
+  adresse_complete?: string;
 }
 
 interface DVFCSVRow {
@@ -19,6 +25,10 @@ interface DVFCSVRow {
   sbatapt: string;              // "Surface reelle bati"
   code_postal: string;          // "Code postal" (colonne directe)
   nbapt1pp: string;             // "Nombre pieces principales"
+  no_voie?: string;             // "No voie" (numéro de rue) - peut être vide
+  type_voie?: string;           // "Type de voie" (RUE, AV, CHE, etc.) - peut être vide
+  voie?: string;                 // "Voie" (nom de la rue) - peut être vide
+  commune?: string;             // "Commune" (nom de la commune) - peut être vide
 }
 
 class DVFCache {
@@ -28,7 +38,7 @@ class DVFCache {
   private dataSource: string = '2025';
   private readonly CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
   private readonly MAX_TRANSACTIONS = 10000;
-  private readonly SMART_ANALYSIS_LIMIT = 1000;
+  private readonly SMART_ANALYSIS_LIMIT = 5000; // Augmenter pour inclure plus de transactions
 
   private constructor() {}
 
@@ -290,6 +300,20 @@ class DVFCache {
       // Parser la date (format: DD/MM/YYYY → YYYY-MM-DD)
       const dateMutation = this.parseDate(row.datemut);
 
+      // Extraire les informations d'adresse (peuvent être vides)
+      const noVoie = row.no_voie ? row.no_voie.trim() : '';
+      const typeVoie = row.type_voie ? row.type_voie.trim() : '';
+      const voie = row.voie ? row.voie.trim() : '';
+      const commune = row.commune ? row.commune.trim() : '';
+
+      // Construire l'adresse complète si possible
+      let adresseComplete = '';
+      if (noVoie && typeVoie && voie) {
+        adresseComplete = `${noVoie} ${typeVoie} ${voie}`.trim();
+      } else if (typeVoie && voie) {
+        adresseComplete = `${typeVoie} ${voie}`.trim();
+      }
+
       return {
         id: row.idmutation,
         date_mutation: dateMutation,
@@ -298,7 +322,12 @@ class DVFCache {
         surface_reelle_bati: surface,
         code_postal: codePostal,
         prix_m2: prixM2,
-        nombre_pieces: nbPieces
+        nombre_pieces: nbPieces,
+        no_voie: noVoie || undefined,
+        type_voie: typeVoie || undefined,
+        voie: voie || undefined,
+        commune: commune || undefined,
+        adresse_complete: adresseComplete || undefined
       };
     } catch (error) {
       console.warn('Error parsing DVF row:', error, row);

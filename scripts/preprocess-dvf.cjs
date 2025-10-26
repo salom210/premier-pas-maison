@@ -10,14 +10,19 @@ const delimiter = '|';
 
 // Colonnes à extraire (positions dans le fichier pipe-delimited)
 const COLUMN_INDICES = {
-  idmutation: 7,      // "No disposition" (position 7)
-  datemut: 8,         // "Date mutation" (position 8)
-  valeurfonc: 10,     // "Valeur fonciere" (position 10)
-  libtypbien: 36,     // "Type local" (position 36)
-  sbatapt: 38,        // "Surface reelle bati" (position 38)
-  code_postal: 16,    // "Code postal" (position 16)
-  nbapt1pp: 39,       // "Nombre pieces principales" (position 39)
-  code_departement: 18 // "Code departement" (position 18)
+  idmutation: 8,      // "No disposition" (position 8)
+  datemut: 9,         // "Date mutation" (position 9)
+  valeurfonc: 11,     // "Valeur fonciere" (position 11)
+  libtypbien: 37,     // "Type local" (position 37)
+  sbatapt: 39,        // "Surface reelle bati" (position 39)
+  code_postal: 17,    // "Code postal" (position 17)
+  nbapt1pp: 40,       // "Nombre pieces principales" (position 40)
+  code_departement: 19, // "Code departement" (position 19)
+  // Colonnes d'adresse
+  no_voie: 12,        // "No voie" (position 12)
+  type_voie: 14,      // "Type de voie" (position 14)
+  voie: 16,           // "Voie" (position 16)
+  commune: 18         // "Commune" (position 18)
 };
 
 function parseLine(line) {
@@ -25,7 +30,9 @@ function parseLine(line) {
   const row = {};
   
   for (const [key, index] of Object.entries(COLUMN_INDICES)) {
-    row[key] = columns[index] || '';
+    // Les indices dans COLUMN_INDICES sont 1-based (positions dans le fichier)
+    // Convertir en 0-based pour JavaScript
+    row[key] = columns[index - 1] || '';
   }
   
   return row;
@@ -43,8 +50,9 @@ function formatValue(value, type) {
 }
 
 function isValidRow(row) {
-  // Vérifier que c'est le département 93
-  if (row.code_departement !== '93') return false;
+  // Vérifier que c'est le département 93 (index 19 = position 20 dans le fichier)
+  const codeDep = row.code_departement?.trim();
+  if (codeDep !== '93') return false;
   
   // Vérifier que les champs essentiels ne sont pas vides
   if (!row.idmutation || !row.datemut || !row.valeurfonc) return false;
@@ -82,7 +90,11 @@ async function processFile(inputPath, outputPath, year) {
         'libtypbien',
         'sbatapt',
         'code_postal',
-        'nbapt1pp'
+        'nbapt1pp',
+        'no_voie',
+        'type_voie',
+        'voie',
+        'commune'
       ].join(';');
       filteredLines.push(csvHeader);
       continue;
@@ -100,7 +112,11 @@ async function processFile(inputPath, outputPath, year) {
           libtypbien: row.libtypbien,
           sbatapt: formatValue(row.sbatapt, 'sbatapt'),
           code_postal: row.code_postal,
-          nbapt1pp: row.nbapt1pp
+          nbapt1pp: row.nbapt1pp,
+          no_voie: row.no_voie || '',
+          type_voie: row.type_voie || '',
+          voie: row.voie || '',
+          commune: row.commune || ''
         };
 
         // Créer la ligne CSV
@@ -111,7 +127,11 @@ async function processFile(inputPath, outputPath, year) {
           formattedRow.libtypbien,
           formattedRow.sbatapt,
           formattedRow.code_postal,
-          formattedRow.nbapt1pp
+          formattedRow.nbapt1pp,
+          formattedRow.no_voie,
+          formattedRow.type_voie,
+          formattedRow.voie,
+          formattedRow.commune
         ].join(';');
 
         filteredLines.push(csvLine);

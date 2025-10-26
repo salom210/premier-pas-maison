@@ -16,6 +16,7 @@ export async function fetchMarketData(
     etat?: string;
     charges_trimestrielles?: number;
     prix_demande?: number;
+    adresse?: string; // Adresse complète pour la proximité géographique
   }
 ): Promise<MarketAnalysis | null> {
   // Essayer d'abord les données DVF locales pour le département 93
@@ -27,11 +28,12 @@ export async function fetchMarketData(
       
       if (dvfData && dvfData.length > 0) {
         console.log(`Données DVF chargées: ${dvfData.length} transactions`);
-        const analysis = analyzeDVFMarket(dvfData, {
+        const analysis = await analyzeDVFMarket(dvfData, {
           codePostal,
           ville,
           surface,
           nombrePieces,
+          adresse: additionalInfo?.adresse,
           additionalInfo
         });
         

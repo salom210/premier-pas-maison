@@ -2,12 +2,14 @@ import { DVFTransaction } from './dvfLoader';
 import { progressiveDVFLoader } from './progressiveLoader';
 import { loadDVFData, dvfCache } from './dvfLoader';
 import type { MarketAnalysis } from '@/types/project';
+import { scoreTransactions, scoreTransactionsWithGeocoding, type ScoredTransaction } from './geographicScoring';
 
 export interface DVFAnalysisParams {
   codePostal: string;
   ville: string;
   surface: number;
   nombrePieces: number;
+  adresse?: string; // Adresse complète de l'utilisateur pour la proximité géographique
   additionalInfo?: {
     etage?: number;
     dernier_etage?: boolean;
@@ -28,18 +30,18 @@ export interface SimilarTransaction {
   distance_km: number;
 }
 
-export function analyzeDVFMarket(
+export async function analyzeDVFMarket(
   transactions: DVFTransaction[],
   params: DVFAnalysisParams,
   dataSource?: string
-): MarketAnalysis | null {
+): Promise<MarketAnalysis | null> {
   const { codePostal, surface, nombrePieces } = params;
 
   console.log(`Analyzing DVF market for postal code ${codePostal}, surface ${surface}m², ${nombrePieces} pieces`);
   console.log(`Total transactions available: ${transactions.length}`);
 
   // Find similar transactions
-  const similarTransactions = findSimilarTransactions(transactions, codePostal, surface, nombrePieces);
+  const similarTransactions = findSimilarTransactions(transactions, codePostal, surface, nombrePieces, params.adresse, params.ville);
 
   if (similarTransactions.length === 0) {
     console.log(`No similar transactions found for postal code ${codePostal}`);
@@ -51,30 +53,100 @@ export function analyzeDVFMarket(
   // Calculate room-based statistics FIRST
   const roomStats = calculateRoomStatistics(similarTransactions, nombrePieces);
   
-  // PRIORITÉ : Utiliser le prix moyen au m² des biens avec le même nombre de pièces
-  const exactMatchTransactions = similarTransactions.filter(t => t.nombre_pieces === nombrePieces);
+  // Calcul du prix moyen au m² avec priorisation géographique SI l'adresse est disponible
   let prixMoyenM2: number;
   let fiabiliteEstimation: 'forte' | 'moyenne' | 'faible' = 'moyenne';
+  let exactMatchTransactions: DVFTransaction[] = [];
+  let scoredTransactionsFinal: ScoredTransaction[] | null = null;
   
-  if (exactMatchTransactions.length >= 10) {
-    // Plus de 10 transactions exactes : utiliser uniquement celles-ci
-    const exactPrices = exactMatchTransactions.map(t => t.prix_m2).sort((a, b) => a - b);
-    prixMoyenM2 = calculateMedian(exactPrices);
-    fiabiliteEstimation = 'forte';
-    console.log(`Utilisation de ${exactMatchTransactions.length} transactions exactes (fiabilité forte)`);
-  } else if (exactMatchTransactions.length > 0) {
-    // Moins de 10 mais au moins 1 transaction exacte : utiliser celles-ci mais fiabilité faible
-    const exactPrices = exactMatchTransactions.map(t => t.prix_m2).sort((a, b) => a - b);
-    prixMoyenM2 = calculateMedian(exactPrices);
-    fiabiliteEstimation = 'faible';
-    console.log(`Utilisation de ${exactMatchTransactions.length} transactions exactes (fiabilité faible)`);
+  if (params.adresse && params.ville) {
+    // Utiliser le scoring géographique avec géocodage réel
+    console.log('🌍 Utilisation du scoring avec géocodage réel...');
+    const scoredTransactions = await scoreTransactionsWithGeocoding(
+      similarTransactions,
+      params.adresse,
+      params.ville,
+      surface,
+      nombrePieces,
+      codePostal // Passer le code postal pour améliorer la précision
+    );
+    
+    // Afficher les top 10 transactions pour debug
+    console.log('📍 Top 10 transactions scorrées:');
+    scoredTransactions.slice(0, 10).forEach((t, idx) => {
+      console.log(`${idx + 1}. ${t.adresse_complete || 'N/A'} - Score: ${t.score_combiné.toFixed(1)}, Distance: ${t.distance_m ? Math.round(t.distance_m) + 'm' : 'N/A'}, Prix: ${Math.round(t.prix_m2)}€/m²`);
+    });
+    
+    // Calculer le prix moyen pondéré par le score combiné
+    // Trier d'abord les transactions par score décroissant
+    scoredTransactions.sort((a, b) => b.score_combiné - a.score_combiné);
+    
+    // Utiliser uniquement les 50 meilleures transactions pour le calcul du prix moyen
+    // Cela maximise la précision en se concentrant sur les transactions les plus pertinentes
+    const top50Transactions = scoredTransactions.slice(0, 50);
+    const totalScore = top50Transactions.reduce((sum, t) => sum + t.score_combiné, 0);
+    const weightedPriceSum = top50Transactions.reduce((sum, t) => sum + (t.prix_m2 * t.score_combiné), 0);
+    prixMoyenM2 = totalScore > 0 ? weightedPriceSum / totalScore : 0;
+    
+    // Calculer aussi la médiane des 30 meilleures pour comparaison
+    const topTransactions = top50Transactions.slice(0, 30);
+    const medianPrices = topTransactions.map(t => t.prix_m2).sort((a, b) => a - b);
+    const prixMoyenM2Median = calculateMedian(medianPrices);
+    
+    console.log(`💡 Prix moyen pondéré sur top 50: ${Math.round(prixMoyenM2)}€/m² (médiane top 30: ${Math.round(prixMoyenM2Median)}€/m²)`);
+    
+    // Utiliser la médiane si la différence avec la moyenne pondérée est importante
+    if (Math.abs(prixMoyenM2 - prixMoyenM2Median) / prixMoyenM2 > 0.15) {
+      console.log(`⚠️ Grande divergence détectée, utilisation de la médiane`);
+      prixMoyenM2 = prixMoyenM2Median;
+    }
+    
+    // Déterminer la fiabilité basée sur les 50 meilleures transactions (déjà extraites)
+    const avgScore = top50Transactions.reduce((sum, t) => sum + t.score_combiné, 0) / top50Transactions.length;
+    
+    // Maximiser la fiabilité en fonction des meilleures transactions
+    if (scoredTransactions.length >= 20 && avgScore > 70) {
+      fiabiliteEstimation = 'forte';
+    } else if (scoredTransactions.length >= 10 && avgScore > 60) {
+      fiabiliteEstimation = 'forte';
+    } else if (scoredTransactions.length >= 5 && avgScore > 50) {
+      fiabiliteEstimation = 'moyenne';
+    } else if (scoredTransactions.length >= 3 && avgScore > 40) {
+      fiabiliteEstimation = 'moyenne';
+    } else {
+      fiabiliteEstimation = 'faible';
+    }
+    
+    console.log(`📊 Fiabilité: ${fiabiliteEstimation} (${scoredTransactions.length} transactions, score moyen top 50: ${avgScore.toFixed(1)})`);
+    
+    // Extraire les transactions exactes pour le calcul du prix_moyen_m2_exact
+    exactMatchTransactions = topTransactions.filter(t => t.nombre_pieces === nombrePieces);
+    
+    // Conserver les transactions scorrées pour le mapping final
+    scoredTransactionsFinal = scoredTransactions;
+    
+    console.log(`✅ Utilisation de ${scoredTransactions.length} transactions pondérées par scoring avec géocodage (fiabilité ${fiabiliteEstimation}, score moyen: ${avgScore.toFixed(1)})`);
   } else {
-    // Aucune transaction exacte : fallback sur le système de pondération
-    const weightedPrices = calculateWeightedPrices(similarTransactions, nombrePieces);
-    const pricesPerM2Sorted = [...weightedPrices].sort((a, b) => a - b);
-    prixMoyenM2 = calculateMedian(pricesPerM2Sorted);
-    fiabiliteEstimation = 'faible';
-    console.log(`Aucune transaction exacte, utilisation du système de pondération (fiabilité faible)`);
+    // Fallback : priorité par nombre de pièces (ancien système)
+    exactMatchTransactions = similarTransactions.filter(t => t.nombre_pieces === nombrePieces);
+    
+    if (exactMatchTransactions.length >= 10) {
+      const exactPrices = exactMatchTransactions.map(t => t.prix_m2).sort((a, b) => a - b);
+      prixMoyenM2 = calculateMedian(exactPrices);
+      fiabiliteEstimation = 'forte';
+      console.log(`Utilisation de ${exactMatchTransactions.length} transactions exactes (fiabilité forte)`);
+    } else if (exactMatchTransactions.length > 0) {
+      const exactPrices = exactMatchTransactions.map(t => t.prix_m2).sort((a, b) => a - b);
+      prixMoyenM2 = calculateMedian(exactPrices);
+      fiabiliteEstimation = 'faible';
+      console.log(`Utilisation de ${exactMatchTransactions.length} transactions exactes (fiabilité faible)`);
+    } else {
+      const weightedPrices = calculateWeightedPrices(similarTransactions, nombrePieces);
+      const pricesPerM2Sorted = [...weightedPrices].sort((a, b) => a - b);
+      prixMoyenM2 = calculateMedian(pricesPerM2Sorted);
+      fiabiliteEstimation = 'faible';
+      console.log(`Aucune transaction exacte, utilisation du système de pondération (fiabilité faible)`);
+    }
   }
   
   // Calculer min/max sur TOUTES les transactions similaires (pas seulement les exactes)
@@ -104,15 +176,34 @@ export function analyzeDVFMarket(
 
 
   // Map similar transactions to the expected format
-  const transactionsSimilaires: SimilarTransaction[] = similarTransactions.map(t => ({
-    id: t.id,
-    adresse: `Code postal ${t.code_postal}`, // DVF doesn't have exact addresses
-    prix_vente: t.valeur_fonciere,
-    surface: t.surface_reelle_bati,
-    nombre_pieces: t.nombre_pieces,
-    date_vente: t.date_mutation,
-    distance_km: 0 // Not applicable for DVF data
-  }));
+  // Utiliser les transactions scorrées si disponibles (qui contiennent distance_m)
+  let transactionsSimilaires: SimilarTransaction[] = scoredTransactionsFinal 
+    ? scoredTransactionsFinal.map(t => ({
+        id: t.id,
+        adresse: t.adresse_complete || `Code postal ${t.code_postal}`,
+        prix_vente: t.valeur_fonciere,
+        surface: t.surface_reelle_bati,
+        nombre_pieces: t.nombre_pieces,
+        date_vente: t.date_mutation,
+        distance_km: t.distance_m ? t.distance_m / 1000 : 0 // Convertir mètres en km
+      }))
+    : similarTransactions.map(t => ({
+        id: t.id,
+        adresse: t.adresse_complete || `Code postal ${t.code_postal}`,
+        prix_vente: t.valeur_fonciere,
+        surface: t.surface_reelle_bati,
+        nombre_pieces: t.nombre_pieces,
+        date_vente: t.date_mutation,
+        distance_km: 0
+      }));
+  
+  // S'assurer que les transactions sont triées par distance croissante
+  // (les plus proches en premier)
+  transactionsSimilaires.sort((a, b) => {
+    if (a.distance_km === 0 && b.distance_km !== 0) return 1;
+    if (b.distance_km === 0 && a.distance_km !== 0) return -1;
+    return a.distance_km - b.distance_km;
+  });
 
   return {
     prix_moyen_m2_quartier: prixMoyenM2,
@@ -141,13 +232,17 @@ function findSimilarTransactions(
   transactions: DVFTransaction[],
   codePostal: string,
   surface: number,
-  nombrePieces: number
+  nombrePieces: number,
+  adresse?: string,
+  commune?: string
 ): DVFTransaction[] {
   console.log(`Searching for transactions with postal code: ${codePostal}, surface: ${surface}m², pieces: ${nombrePieces}`);
   
   // Optimisation: créer des index pour accélérer la recherche
-  const surfaceMin = surface - 20;
-  const surfaceMax = surface + 20;
+  // Élargir le filtre de surface si on utilise le scoring géographique
+  const surfaceRange = adresse ? 40 : 20; // Plus large si scoring géographique
+  const surfaceMin = surface - surfaceRange;
+  const surfaceMax = surface + surfaceRange;
   
   // First try: exact postal code match with pre-filtering
   let similarTransactions = transactions.filter(transaction => {
@@ -175,7 +270,35 @@ function findSimilarTransactions(
     console.log(`Found ${similarTransactions.length} transactions in department ${department}`);
   }
 
-  // Appliquer la priorité par nombre de pièces avec système de pondération
+  // Si l'adresse est disponible, utiliser le scoring géographique combiné
+  if (adresse && commune && similarTransactions.length > 0) {
+    console.log(`Using geographic scoring with user address: ${adresse}`);
+    const scoredTransactions = scoreTransactions(
+      similarTransactions,
+      adresse,
+      commune,
+      surface,
+      nombrePieces
+    );
+    
+    // Trier par score décroissant
+    scoredTransactions.sort((a, b) => b.score_combiné - a.score_combiné);
+    
+    console.log(`Top 10 scored transactions:`);
+    scoredTransactions.slice(0, 10).forEach((t, idx) => {
+      console.log(`${idx + 1}. ${t.adresse_complete || 'N/A'}`);
+      console.log(`   - Score combiné: ${t.score_combiné.toFixed(1)} (proximité: ${t.score_proximité}, pièces: ${t.score_pièces.toFixed(1)}, surface: ${t.score_surface.toFixed(1)})`);
+      console.log(`   - ${t.nombre_pieces} pièces, ${t.surface_reelle_bati}m², ${Math.round(t.prix_m2)}€/m²`);
+    });
+    
+    // Limiter à 1000 meilleures transactions
+    const limitedTransactions = scoredTransactions.slice(0, 1000);
+    
+    // Retourner uniquement les champs DVFTransaction (sans les scores)
+    return limitedTransactions.map(({ score_combiné, score_proximité, score_pièces, score_surface, ...rest }) => rest);
+  }
+  
+  // Fallback : appliquer la priorité par nombre de pièces avec système de pondération
   similarTransactions = prioritizeByRooms(similarTransactions, nombrePieces);
 
   // Limiter le nombre de résultats pour éviter les problèmes de performance
@@ -329,7 +452,7 @@ export async function analyzeDVFMarketData(params: DVFAnalysisParams): Promise<M
       console.log(`Found ${exactPostalCodeTransactions.length} transactions for exact postal code ${params.codePostal}`);
       
       // Essayer l'analyse DVF même si pas de correspondance exacte (utilise le département)
-      const analysis = analyzeDVFMarket(transactions, params, dataSource);
+      const analysis = await analyzeDVFMarket(transactions, params, dataSource);
       if (analysis) {
         analysis.source = 'DVF';
         console.log(`DVF analysis successful for ${params.codePostal}`);
@@ -351,7 +474,7 @@ export async function analyzeDVFMarketData(params: DVFAnalysisParams): Promise<M
       console.log(`Found ${exactPostalCodeTransactions.length} transactions for exact postal code ${params.codePostal}`);
       
       // Essayer l'analyse DVF même si pas de correspondance exacte (utilise le département)
-      const analysis = analyzeDVFMarket(transactions, params, dataSource);
+      const analysis = await analyzeDVFMarket(transactions, params, dataSource);
       if (analysis) {
         analysis.source = 'DVF';
         console.log(`DVF analysis successful for ${params.codePostal}`);

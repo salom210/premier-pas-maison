@@ -87,7 +87,7 @@ export function IntegrationTest() {
       setResults(prev => prev.map(r => r.name === 'Analyse de marché' ? { ...r, status: 'running' } : r));
       
       const dvfData = await loadDVFData();
-      const analysis = analyzeDVFMarket(dvfData, {
+      const analysis = await analyzeDVFMarket(dvfData, {
         codePostal: '93400',
         ville: 'Test',
         surface: 50,
@@ -121,7 +121,7 @@ export function IntegrationTest() {
       setResults(prev => prev.map(r => r.name === 'Priorité par nombre de pièces' ? { ...r, status: 'running' } : r));
       
       const dvfData = await loadDVFData();
-      const analysis = analyzeDVFMarket(dvfData, {
+      const analysis = await analyzeDVFMarket(dvfData, {
         codePostal: '93400',
         ville: 'Test',
         surface: 50,
@@ -162,7 +162,7 @@ export function IntegrationTest() {
       
       // Test avec un code postal qui n'existe pas dans 2025 pour forcer le fallback
       const dvfData = await loadDVFData();
-      const analysis = analyzeDVFMarket(dvfData, {
+      const analysis = await analyzeDVFMarket(dvfData, {
         codePostal: '99999', // Code postal inexistant
         ville: 'Test',
         surface: 50,
@@ -199,7 +199,7 @@ export function IntegrationTest() {
       setResults(prev => prev.map(r => r.name === 'Correspondance exacte code postal' ? { ...r, status: 'running' } : r));
       
       const dvfData = await loadDVFData();
-      const analysis = analyzeDVFMarket(dvfData, {
+      const analysis = await analyzeDVFMarket(dvfData, {
         codePostal: '93400',
         ville: 'Test',
         surface: 50,

@@ -130,11 +130,9 @@ export function ExpertAnalysisWithAdjustments({
                     {ecartAjuste > 0 ? '+' : ''}{ecartAjuste}%
                   </span>
                 </div>
-                {totalImpact !== 0 && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {ecartCalcule > 0 ? '+' : ''}{ecartCalcule}% avant ajustements
-                  </div>
-                )}
+                <div className="text-xs text-muted-foreground mt-1 h-5">
+                  {totalImpact !== 0 && `${ecartCalcule > 0 ? '+' : ''}${ecartCalcule}% avant ajustements`}
+                </div>
               </div>
 
               {/* Colonne 2: Prix/m² */}
@@ -147,11 +145,9 @@ export function ExpertAnalysisWithAdjustments({
                     {adjustedPriceM2 ? Math.round(adjustedPriceM2).toLocaleString('fr-FR') : Math.round(prixReferenceM2).toLocaleString('fr-FR')}€/m²
                   </span>
                 </div>
-                {adjustedPriceM2 && totalImpact !== 0 && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {Math.round(prixReferenceM2).toLocaleString('fr-FR')}€/m² avant ajustements
-                  </div>
-                )}
+                <div className="text-xs text-muted-foreground mt-1 h-5">
+                  {adjustedPriceM2 && totalImpact !== 0 && `${Math.round(prixReferenceM2).toLocaleString('fr-FR')}€/m² avant ajustements`}
+                </div>
               </div>
 
               {/* Colonne 3: Valeur estimée */}
@@ -164,11 +160,9 @@ export function ExpertAnalysisWithAdjustments({
                     {adjustedValue ? formatEuros(adjustedValue) : formatEuros(marketAnalysis.valeur_estimee_mediane)}
                   </span>
                 </div>
-                {adjustedValue && totalImpact !== 0 && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {formatEuros(marketAnalysis.valeur_estimee_mediane)} avant ajustements
-                  </div>
-                )}
+                <div className="text-xs text-muted-foreground mt-1 h-5">
+                  {adjustedValue && totalImpact !== 0 && `${formatEuros(marketAnalysis.valeur_estimee_mediane)} avant ajustements`}
+                </div>
               </div>
             </div>
           </CardContent>

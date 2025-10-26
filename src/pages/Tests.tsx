@@ -2,9 +2,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RoomsPriorityTest } from "@/components/RoomsPriorityTest";
 import { IntegrationTest } from "@/components/IntegrationTest";
 import { DVFProgressTest } from "@/components/DVFProgressTest";
+import { GeographicProximityTest } from "@/components/GeographicProximityTest";
 import { TestsInfoCard } from "@/components/TestsInfoCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, TestTube, Zap, Database } from "lucide-react";
+import { BarChart3, TestTube, MapPin, Database } from "lucide-react";
 
 export default function TestsPage() {
   return (
@@ -19,7 +20,7 @@ export default function TestsPage() {
       <TestsInfoCard />
 
       <Tabs defaultValue="progress-test" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="progress-test" className="flex items-center gap-2">
             <Database className="h-4 w-4" />
             Chargement Progressif
@@ -27,6 +28,10 @@ export default function TestsPage() {
           <TabsTrigger value="rooms-test" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             Priorité Pièces
+          </TabsTrigger>
+          <TabsTrigger value="geographic-test" className="flex items-center gap-2">
+            <MapPin className="h-4 w-4" />
+            Proximité Géographique
           </TabsTrigger>
           <TabsTrigger value="integration-test" className="flex items-center gap-2">
             <TestTube className="h-4 w-4" />
@@ -66,6 +71,25 @@ export default function TestsPage() {
                 incluant les statistiques détaillées par groupe de pièces.
               </p>
               <RoomsPriorityTest />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="geographic-test" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Test de priorisation géographique
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                Ce test vérifie que les transactions situées près de l'adresse de l'utilisateur sont priorisées 
+                dans l'analyse de marché, en utilisant un système de scoring combiné (proximité géographique 40%, 
+                nombre de pièces 35%, surface 25%).
+              </p>
+              <GeographicProximityTest />
             </CardContent>
           </Card>
         </TabsContent>

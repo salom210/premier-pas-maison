@@ -88,15 +88,16 @@ export function OfferToolContent({
   }, [offre]);
 
   // Auto-switch to "Marché" tab after market analysis is loaded (only once, only from "bien" tab)
-  useEffect(() => {
-    if (localOffre.market_analysis && activeTab === "bien" && !hasAutoSwitchedToMarche.current) {
-      // Use setTimeout to avoid conflicts with other state updates
-      setTimeout(() => {
-        setActiveTab("marche");
-        hasAutoSwitchedToMarche.current = true;
-      }, 100);
-    }
-  }, [localOffre.market_analysis, activeTab]);
+  // NOTE: Désactivé car le basculement se fait maintenant explicitement dans handleFetchMarketData
+  // useEffect(() => {
+  //   if (localOffre.market_analysis && activeTab === "bien" && !hasAutoSwitchedToMarche.current) {
+  //     // Use setTimeout to avoid conflicts with other state updates
+  //     setTimeout(() => {
+  //       setActiveTab("marche");
+  //       hasAutoSwitchedToMarche.current = true;
+  //     }, 100);
+  //   }
+  // }, [localOffre.market_analysis, activeTab]);
 
 
   // Address search functionality
@@ -205,7 +206,8 @@ export function OfferToolContent({
           annee_construction,
           etat,
           charges_trimestrielles,
-          prix_demande
+          prix_demande,
+          adresse: localOffre.property_info.adresse // Passer l'adresse pour la proximité géographique
         }
       );
 
@@ -287,6 +289,11 @@ export function OfferToolContent({
         return newOffre;
       });
 
+      // Basculer automatiquement vers l'onglet "Marché" après l'analyse
+      setTimeout(() => {
+        setActiveTab("marche");
+      }, 300);
+
       // Toast de succès
       if (chatgptAnalysis) {
         toast({
@@ -309,7 +316,7 @@ export function OfferToolContent({
     } finally {
       setIsLoadingMarket(false);
     }
-  }, [localOffre.property_info, onUpdateOffre]);
+  }, [localOffre.property_info, onUpdateOffre, setActiveTab]);
 
   // Fonction pour générer les scénarios recommandés par l'IA
   const genererRecommandationsScenarios = (
@@ -1055,7 +1062,10 @@ export function OfferToolContent({
                             Prix moyen par nombre de pièces
                           </h4>
                           <div className="grid gap-3 w-full" style={{gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))'}}>
-                            {localOffre.market_analysis.statistiques_pieces.groupes_pieces.slice(0, 6).map((groupe, idx) => (
+                            {localOffre.market_analysis.statistiques_pieces.groupes_pieces
+                              .filter(groupe => ['exacte', 'proche', 'elargie'].includes(groupe.priorite))
+                              .slice(0, 3)
+                              .map((groupe, idx) => (
                               <div key={idx} className="flex items-center justify-between p-3 bg-card rounded-lg border border-border">
                                 <div className="flex items-center gap-2">
                                   <span className="font-semibold text-foreground">{groupe.nombre_pieces} pièces</span>
@@ -1080,9 +1090,9 @@ export function OfferToolContent({
                               </div>
                             ))}
                           </div>
-                          {localOffre.market_analysis.statistiques_pieces.groupes_pieces.length > 6 && (
+                          {localOffre.market_analysis.statistiques_pieces.groupes_pieces.filter(groupe => ['exacte', 'proche', 'elargie'].includes(groupe.priorite)).length > 3 && (
                             <p className="text-xs text-muted-foreground mt-2 text-center">
-                              +{localOffre.market_analysis.statistiques_pieces.groupes_pieces.length - 6} autres groupes
+                              +{localOffre.market_analysis.statistiques_pieces.groupes_pieces.filter(groupe => ['exacte', 'proche', 'elargie'].includes(groupe.priorite)).length - 3} autres groupes
                             </p>
                           )}
                         </div>

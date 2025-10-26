@@ -230,7 +230,8 @@ export function OfferToolModal({
           annee_construction,
           etat,
           charges_trimestrielles,
-          prix_demande
+          prix_demande,
+          adresse: localOffre.property_info.adresse // Passer l'adresse pour la proximité géographique
         }
       );
 
@@ -292,6 +293,11 @@ export function OfferToolModal({
         chatgpt_analysis: chatgptAnalysis,
         fiabilite: fiabiliteScore
       }));
+
+      // Basculer automatiquement vers l'onglet "Marché" après l'analyse
+      setTimeout(() => {
+        setActiveTab("marche");
+      }, 300);
 
       const source = marketData.source === 'IA' ? 'IA' : 'DVF';
       const analysisType = chatgptAnalysis ? `${source} + Analyse experte IA` : source;
@@ -1143,7 +1149,10 @@ Cordialement,
                               Prix moyen par nombre de pièces
                             </h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                              {localOffre.market_analysis.statistiques_pieces.groupes_pieces.slice(0, 6).map((groupe, idx) => (
+                              {localOffre.market_analysis.statistiques_pieces.groupes_pieces
+                                .filter(groupe => ['exacte', 'proche', 'elargie'].includes(groupe.priorite))
+                                .slice(0, 3)
+                                .map((groupe, idx) => (
                                 <div key={idx} className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200">
                                   <div className="flex items-center gap-2">
                                     <span className="font-semibold text-blue-800">{groupe.nombre_pieces} pièces</span>
@@ -1168,9 +1177,9 @@ Cordialement,
                                 </div>
                               ))}
                             </div>
-                            {localOffre.market_analysis.statistiques_pieces.groupes_pieces.length > 6 && (
+                            {localOffre.market_analysis.statistiques_pieces.groupes_pieces.filter(groupe => ['exacte', 'proche', 'elargie'].includes(groupe.priorite)).length > 3 && (
                               <p className="text-xs text-gray-500 mt-2 text-center">
-                                +{localOffre.market_analysis.statistiques_pieces.groupes_pieces.length - 6} autres groupes
+                                +{localOffre.market_analysis.statistiques_pieces.groupes_pieces.filter(groupe => ['exacte', 'proche', 'elargie'].includes(groupe.priorite)).length - 3} autres groupes
                               </p>
                             )}
                           </div>
